@@ -1,0 +1,202 @@
+{
+  "name": "propmt-scaffold",
+  "displayName": "Prompt Scaffold",
+  "description": "Generates project structure and aggregate code file from selected file context.",
+  "version": "0.0.1",
+  "publisher": "Memeticode",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Memeticode/llm-prompt-scaffold.git"
+  },
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "media/icon.png",
+  "activationEvents": [
+    "workspaceContains:**/*",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Prompt Scaffold",
+      "properties": {
+        "promptScaffold.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the Prompt Scaffold extension"
+        },
+        "promptScaffold.extensionDirectory": {
+          "type": "string",
+          "default": ".prompt-scaffold/",
+          "description": "The extension's base directory, relative to the workspace root."
+        },
+        "promptScaffold.infoDirectory": {
+          "type": "string",
+          "default": "info/",
+          "description": "The directory where configuration files will be generated/stored, relative to the extension directory."
+        },
+        "promptScaffold.outputDirectory": {
+          "type": "string",
+          "default": "out/",
+          "description": "The directory where prompt files will be generated, relative to the extension directory."
+        },
+        "promptScaffold.promptTxtFileName": {
+          "type": "string",
+          "default": "prompt.txt",
+          "description": "The name of the prompt file to be generated, which the complete prompt."
+        },
+        "promptScaffold.summaryFileName": {
+          "type": "string",
+          "default": "1-project-summary.txt",
+          "description": "The name of the summary file to be generated, which contains a summary of the project and goals."
+        },
+        "promptScaffold.structureFileName": {
+          "type": "string",
+          "default": "2-project-structure.txt",
+          "description": "The name of the structure file to be generated, which contains a list of all files in the project."
+        },
+        "promptScaffold.aggregateFileName": {
+          "type": "string",
+          "default": "3-project-code-aggregate.txt",
+          "description": "The name of the code aggregate file to be generated, which contains the content of all file context files in the project."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "project-sidebar",
+          "title": "LLM Prompt Scaffold",
+          "icon": "media/icon.png",
+          "when": "workbenchState == workspace && promptScaffoldEnabled"
+        }
+      ]
+    },
+    "views": {
+      "project-sidebar": [
+        {
+          "id": "sidebar-project-info",
+          "name": "Project Context",
+          "type": "tree",
+          "description": "Provides context information for your prompt files."
+        },
+        {
+          "id": "sidebar-out-files",
+          "name": "Prompt Files",
+          "type": "tree",
+          "description": "Files generated for your prompt. You can use prompt.txt, or inspect the individual files."
+        }
+      ]
+    }, 
+    "commands": [
+      {
+        "command": "promptScaffold.refreshExtension",
+        "title": "Refresh Prompt Scaffold Extension"
+      },
+      {
+        "command": "promptScaffold.toggleExtension",
+        "title": "Toggle Prompt Scaffold Extension"
+      },
+      {
+        "command": "promptScaffold.initializeConfig",
+        "title": "Initialize Prompt Scaffold Configuration"
+      },
+      {
+        "command": "promptScaffold.openProjectInfoFile",
+        "title": "Opens Project Info File in Editor"
+      },
+      {
+        "command": "promptScaffold.generatePromptOutFiles",
+        "title": "Refresh Prompt Output Files",
+        "description": "(Re)generate all prompt output files",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "promptScaffold.openPromptOutFile",
+        "title": "Open Prompt Output File",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "promptScaffold.openPromptOutFolder",
+        "title": "Open System Folder",
+        "description": "Open the system folder containing prompt output files",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "promptScaffold.currentFileContextExpandAll",
+        "title": "Expand All",
+        "description": "Fully expand the current file context",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "promptScaffold.currentFileContextCollapseAll",
+        "title": "Collapse All",
+        "description": "Collapse the current file context",
+        "icon": "$(collapse-all)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "promptScaffold.generatePromptOutFiles",
+          "when": "view == sidebar-out-files",
+          "group": "navigation"
+        },
+        {
+          "command": "promptScaffold.openPromptOutFolder",
+          "when": "view == sidebar-out-files",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "promptScaffold.currentFileContextExpandAll",
+          "when": "view == sidebar-project-info && viewItem =~ /.*hasButton:currentFileContextExpandAll.*/",
+          "group": "inline"
+        },
+        {
+          "command": "promptScaffold.currentFileContextCollapseAll",
+          "when": "view == sidebar-project-info && viewItem =~ /.*hasButton:currentFileContextCollapseAll.*/",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "overrides": {
+    "inflight": "npm:lru-cache@^7.0.0",
+    "glob": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.7",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.91.0",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.23.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "ignore": "^5.3.1"
+  }
+}

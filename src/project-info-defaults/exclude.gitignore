@@ -1,0 +1,5 @@
+# Flagged files will be not have their full content included in the prompt (interpreted as a .gitignore)
+.prompt-scaffold
+.git
+.gitignore
+LICENSE

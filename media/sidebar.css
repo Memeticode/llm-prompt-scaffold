@@ -1,0 +1,16 @@
+body {
+    padding: 10px;
+}
+
+input[type="text"] {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+button {
+    width: 100%;
+}
+
+#status {
+    margin-top: 10px;
+}
