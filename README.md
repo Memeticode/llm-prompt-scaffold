@@ -62,4 +62,3 @@ Ensure that you've read through the extensions guidelines and follow the best pr
 * [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
 
 
-**Enjoy!**
