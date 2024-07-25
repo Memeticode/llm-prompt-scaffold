@@ -1,0 +1,8 @@
+# Flagged files will be excluded from the prompt file content info, which contains the full content of files in the project
+# Interpreted as a .gitignore
+
+*.pdf
+*.png
+*.img
+*.jpg
+*.webp

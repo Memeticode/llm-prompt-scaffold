@@ -1,0 +1,3 @@
+# Flagged files will be included in the prompt file content context, which contains the text content of a subset of files in the project
+# Overrides content context exclusions
+# Interpreted as a reverse .gitignore

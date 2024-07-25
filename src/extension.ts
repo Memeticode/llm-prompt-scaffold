@@ -1,17 +1,14 @@
 import * as vscode from 'vscode';
-import { ProjectInfoProvider } from './ui/projectInfoProvider';
-import { PromptOutTreeProvider } from './ui/promptOutTreeProvider';
-import { ConfigurationManager } from './utils/configurationManager';
-import { FileManager } from './utils/fileManager';
+import { ConfigurationManager } from './managers/configurationManager';
+import { FileSystemManager } from './managers/fileSystemManager';
+import { ExtensionStorageFolderManager } from './managers/extensionStorageFolderManager';
 
+// import { ProjectInfoProvider } from './ui/projectInfoProvider';
+// import { PromptOutTreeProvider } from './ui/promptOutTreeProvider';
 
-import { PROJECT_INFO_ITEMS } from './ui/projectInfo/structureConfig';
+// import { PROJECT_INFO_ITEMS } from './config/projectInfoSidebarItems';
 
 let outputChannel: vscode.OutputChannel;
-let projectInfoProvider: ProjectInfoProvider;
-let promptOutTreeProvider: PromptOutTreeProvider;
-let promptOutTreeView: vscode.TreeView<vscode.TreeItem>;
-
 export async function activate(context: vscode.ExtensionContext) {
     // Create and store the output channel
     outputChannel = vscode.window.createOutputChannel('Prompt Scaffold');
@@ -20,10 +17,94 @@ export async function activate(context: vscode.ExtensionContext) {
     // Log activation
     outputChannel.appendLine('Prompt Scaffold extension is activating.');
 
+    const configManager = new ConfigurationManager("ConfigurationManager", outputChannel, context);  
+    outputChannel.appendLine('Initialized ConfigurationManager...');
     
-    const configManager = new ConfigurationManager();
-    const fileManager = new FileManager(configManager);
+    const fileSystemManager = new FileSystemManager("FileSystemManager", outputChannel, configManager);
+    outputChannel.appendLine('Initialized FileSystemManager...');
     
+    const extensionStorageFolderManager = new ExtensionStorageFolderManager("ExtensionStorageFolderManager", outputChannel, configManager, fileSystemManager);
+    outputChannel.appendLine('Initialized ExtensionStorageFolderManager...');
+
+
+    // Register the storage folder name change delegate
+    configManager.setStorageFolderNameChangeDelegate(
+        extensionStorageFolderManager.handleStorageFolderNameConfigurationChangeAsync.bind(extensionStorageFolderManager)
+    );
+
+
+    // Initialize all current workspaces
+    if (vscode.workspace.workspaceFolders) {
+        await extensionStorageFolderManager.initializeStorageFoldersAsync();
+    }
+
+
+    // Listen for workspace folder changes
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeWorkspaceFolders(async (event) => {
+            for (const folder of event.added) {
+                await extensionStorageFolderManager.initializeStorageFolderAsync(folder);
+                outputChannel.appendLine(`Initialized new workspace: ${folder.name}`);
+            }
+            
+            const newRootWorkspace = vscode.workspace.workspaceFolders?.[0];
+            const oldRootWorkspace = event.removed.find(folder => extensionStorageFolderManager.isRootWorkspace(folder));
+            
+            if (newRootWorkspace && oldRootWorkspace && newRootWorkspace !== oldRootWorkspace) {
+                await extensionStorageFolderManager.handleRootWorkspaceChangeAsync(oldRootWorkspace, newRootWorkspace);
+                outputChannel.appendLine(`Root workspace changed from ${oldRootWorkspace.name} to ${newRootWorkspace.name}`);
+            }
+    
+            // Check for project-info and out folders after workspace changes
+            await extensionStorageFolderManager.validateStorageFoldersAsync();
+        })
+    );
+
+    // Command to manually trigger workspace initialization
+    context.subscriptions.push(
+        vscode.commands.registerCommand('promptScaffold.initializeWorkspaces', async () => {
+            if (vscode.workspace.workspaceFolders) {
+                await extensionStorageFolderManager.initializeStorageFoldersAsync();
+                //vscode.window.showInformationMessage('Workspaces initialized successfully.');
+            } else {
+                vscode.window.showWarningMessage('No workspaces found to initialize.');
+            }
+        })
+    );
+
+    // Command to show the current root workspace
+    context.subscriptions.push(
+        vscode.commands.registerCommand('promptScaffold.showRootWorkspace', () => {
+            const rootWorkspace = vscode.workspace.workspaceFolders?.[0];
+            if (rootWorkspace) {
+                vscode.window.showInformationMessage(`Current root workspace: ${rootWorkspace.name}`);
+                outputChannel.appendLine(`Current root workspace: ${rootWorkspace.name}`);
+            } else {
+                vscode.window.showWarningMessage('No root workspace found.');
+                outputChannel.appendLine('No root workspace found.');
+            }
+        })
+    );
+
+    // Command to refresh storage folders
+    context.subscriptions.push(
+        vscode.commands.registerCommand('promptScaffold.refreshStorageFolders', async () => {
+            await extensionStorageFolderManager.refreshStorageFoldersAsync();
+            vscode.window.showInformationMessage('Storage folders refreshed successfully.');
+        })
+    );
+
+    outputChannel.appendLine('Prompt Scaffold extension activated successfully.');
+}
+
+export function deactivate() {
+    outputChannel.appendLine('Prompt Scaffold extension is deactivating.');
+    if (outputChannel) { outputChannel.dispose(); }
+    outputChannel.appendLine('Prompt Scaffold extension deactivated successfully.');
+}
+
+
+/*
     async function setupProviders() {
         if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
             vscode.window.showWarningMessage('Prompt Scaffold: No workspace folder is open. Some features may be limited.');
@@ -60,15 +141,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     async function updateExtensionState() {
-        const isEnabled = configManager.isExtensionEnabled();
-        if (isEnabled) {
-            outputChannel.appendLine('Enabling Prompt Scaffold extension.');
-            vscode.commands.executeCommand('setContext', 'promptScaffoldEnabled', true);
-        } else {
-            outputChannel.appendLine('Disabling Prompt Scaffold extension.');
-            vscode.commands.executeCommand('setContext', 'promptScaffoldEnabled', false);
-        }
-        
         if (!projectInfoProvider || !promptOutTreeProvider) {
             await setupProviders();
         }
@@ -84,11 +156,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // Watch for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('promptScaffold.enabled')) {
-                updateExtensionState();
-            }
-        })
-    );
+            updateExtensionState();
+    }));
 
     // Register commands
     context.subscriptions.push(
@@ -99,7 +168,6 @@ export async function activate(context: vscode.ExtensionContext) {
             ),
         vscode.commands.registerCommand('promptScaffold.generatePromptOutFiles', generatePromptOutFiles),
         vscode.commands.registerCommand('promptScaffold.openPromptOutFolder', openPromptOutFolder),
-        vscode.commands.registerCommand('promptScaffold.toggleExtension', toggleExtension),
         vscode.commands.registerCommand('promptScaffold.refreshExtension', updateExtensionState)
     );
 
@@ -171,17 +239,10 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    async function toggleExtension() {
-        const currentValue = configManager.isExtensionEnabled();
-        await vscode.workspace.getConfiguration('promptScaffold').update('enabled', !currentValue, vscode.ConfigurationTarget.Global);
-        await updateExtensionState();
 
-        // const currentValue = configManager.isExtensionEnabled();
-        // await vscode.workspace.getConfiguration('promptScaffold').update('enabled', !currentValue, vscode.ConfigurationTarget.Global);
-    }
-
-    outputChannel.appendLine('Prompt Scaffold extension activated.');
+    outputChannel.appendLine('Prompt Scaffold extension activation completed.');
 }
+    
 
 
 export function deactivate() {
@@ -189,3 +250,4 @@ export function deactivate() {
     if (projectInfoProvider) { projectInfoProvider.dispose(); }
     if (promptOutTreeProvider) { promptOutTreeProvider.dispose(); }
 }
+*/

@@ -1,0 +1,3 @@
+# Flagged files will be included in the prompt file structure context, which contains a list of files in the project
+# Overrides structure context exclusions
+# Interpreted as a reverse .gitignore

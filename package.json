@@ -24,45 +24,35 @@
     "configuration": {
       "title": "Prompt Scaffold",
       "properties": {
-        "promptScaffold.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable or disable the Prompt Scaffold extension"
-        },
-        "promptScaffold.extensionDirectory": {
+        "promptScaffold.extensionStorageDirectory": {
           "type": "string",
-          "default": ".prompt-scaffold/",
-          "description": "The extension's base directory, relative to the workspace root."
+          "default": ".prompt-scaffold",
+          "description": "The extension's base directory, relative to the workspace root. One of these will be created in each workspace folder."
         },
-        "promptScaffold.infoDirectory": {
+        "promptScaffold.systemPromptDefaultPath": {
           "type": "string",
-          "default": "info/",
-          "description": "The directory where configuration files will be generated/stored, relative to the extension directory."
+          "default": "",
+          "description": "File path for default system prompt text"
         },
-        "promptScaffold.outputDirectory": {
+        "promptScaffold.fileStructureContextIncludeDefaultPath": {
           "type": "string",
-          "default": "out/",
-          "description": "The directory where prompt files will be generated, relative to the extension directory."
+          "default": "",
+          "description": "File path for default file structure include rules"
         },
-        "promptScaffold.promptTxtFileName": {
+        "promptScaffold.fileStructureContextExcludeDefaultPath": {
           "type": "string",
-          "default": "prompt.txt",
-          "description": "The name of the prompt file to be generated, which the complete prompt."
+          "default": "",
+          "description": "File path for default file structure exclude rules"
         },
-        "promptScaffold.summaryFileName": {
+        "promptScaffold.fileSystemContextIncludeDefaultPath": {
           "type": "string",
-          "default": "1-project-summary.txt",
-          "description": "The name of the summary file to be generated, which contains a summary of the project and goals."
+          "default": "",
+          "description": "File path for default file system include rules"
         },
-        "promptScaffold.structureFileName": {
+        "promptScaffold.fileSystemContextExcludeDefaultPath": {
           "type": "string",
-          "default": "2-project-structure.txt",
-          "description": "The name of the structure file to be generated, which contains a list of all files in the project."
-        },
-        "promptScaffold.aggregateFileName": {
-          "type": "string",
-          "default": "3-project-code-aggregate.txt",
-          "description": "The name of the code aggregate file to be generated, which contains the content of all file context files in the project."
+          "default": "",
+          "description": "File path for default file system exclude rules"
         }
       }
     },
@@ -91,8 +81,16 @@
           "description": "Files generated for your prompt. You can use prompt.txt, or inspect the individual files."
         }
       ]
-    }, 
+    },
     "commands": [
+      {
+        "command": "promptScaffold.initializeWorkspaces",
+        "title": "Initialize Prompt Scaffold Workspaces"
+      },
+      {
+        "command": "promptScaffold.showRootWorkspace",
+        "title": "Show Prompt Scaffold Root Workspace"
+      },
       {
         "command": "promptScaffold.refreshExtension",
         "title": "Refresh Prompt Scaffold Extension"

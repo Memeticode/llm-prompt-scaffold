@@ -1,4 +1,5 @@
 const esbuild = require("esbuild");
+const { exec } = require('child_process');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -46,6 +47,17 @@ async function main() {
 		await ctx.watch();
 	} else {
 		await ctx.rebuild();
+		// Copy the defaults folder after the build
+		exec('npx copyfiles -u 3 "src/constants/defaults/**/*" dist/defaultFileContent', (error, stdout, stderr) => {
+			if (error) {
+				console.error(`Error copying defaults folder: ${error.message}`);
+				return;
+			}
+			if (stderr) {
+				console.error(`stderr: ${stderr}`);
+				return;
+			}
+		});
 		await ctx.dispose();
 	}
 }
