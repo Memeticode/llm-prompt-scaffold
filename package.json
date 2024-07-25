@@ -27,32 +27,38 @@
         "promptScaffold.extensionStorageDirectory": {
           "type": "string",
           "default": ".prompt-scaffold",
-          "description": "The extension's base directory, relative to the workspace root. One of these will be created in each workspace folder."
+          "description": "The name of the directory used for storing extension data. One of these will be created in each workspace folder. It's not recommended to change this unless you have an unavoidable namespace conflict.",
+          "scope": "window"
         },
         "promptScaffold.systemPromptDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default system prompt text"
+          "description": "File path for default system prompt text. Will override existing default.",
+          "scope": "window"
         },
         "promptScaffold.fileStructureContextIncludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file structure include rules"
+          "description": "File path for default file structure include rules. Will override existing default.",
+          "scope": "window"
         },
         "promptScaffold.fileStructureContextExcludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file structure exclude rules"
+          "description": "File path for default file structure exclude rules. Will override existing default.",
+          "scope": "window"
         },
         "promptScaffold.fileSystemContextIncludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file system include rules"
+          "description": "File path for default file system include rules. Will override existing default.",
+          "scope": "window"
         },
         "promptScaffold.fileSystemContextExcludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file system exclude rules"
+          "description": "File path for default file system exclude rules. Will override existing default.",
+          "scope": "window"
         }
       }
     },
@@ -84,24 +90,8 @@
     },
     "commands": [
       {
-        "command": "promptScaffold.initializeWorkspaces",
-        "title": "Initialize Prompt Scaffold Workspaces"
-      },
-      {
-        "command": "promptScaffold.showRootWorkspace",
-        "title": "Show Prompt Scaffold Root Workspace"
-      },
-      {
-        "command": "promptScaffold.refreshExtension",
-        "title": "Refresh Prompt Scaffold Extension"
-      },
-      {
-        "command": "promptScaffold.toggleExtension",
-        "title": "Toggle Prompt Scaffold Extension"
-      },
-      {
-        "command": "promptScaffold.initializeConfig",
-        "title": "Initialize Prompt Scaffold Configuration"
+        "command": "promptScaffold.initializeWorkspaceStorageFolders",
+        "title": "Initialize/Refresh Prompt Scaffold Workspace Storage Folders"
       },
       {
         "command": "promptScaffold.openProjectInfoFile",

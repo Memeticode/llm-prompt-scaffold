@@ -13,8 +13,8 @@ type FileType = SystemFileType | WorkspaceFileType;
 // this folder will be created in each workspace (if dne)
 // the root directory will also contain subfolders
 export class ConfigurationManager extends BaseManager {
-    private config: vscode.WorkspaceConfiguration;
-    private storageFolderNameChangeDelegate: ((oldName: string, newName: string) => Promise<void>) | null = null;
+    private storageFolderNameChangeDelegate: ((workspace: vscode.WorkspaceFolder, oldName: string, newName: string) => Promise<void>) | null = null;
+    private refreshStorageFolderDelegate: ((workspace: vscode.WorkspaceFolder, oldName: string, newName: string) => Promise<void>) | null = null;
 
 
     private configKeyMap: Record<FileType, string> = {
@@ -35,64 +35,54 @@ export class ConfigurationManager extends BaseManager {
         private context: vscode.ExtensionContext
     ) {
         super(logName, outputChannel);
-        this.config = vscode.workspace.getConfiguration('promptScaffold');
+        this.initializeLastKnownValues();
+        this.setupConfigurationChangeListener();
     }
+        
+    private initializeLastKnownValues() {
+        const workspaces = vscode.workspace.workspaceFolders || [];
+        const lastKnownValues = this.context.globalState.get<Record<string, string>>('lastKnownStorageDirectories') || {};
+        let updated = false;
+
+        for (const workspace of workspaces) {
+            const key = workspace.uri.toString();
+            if (!lastKnownValues[key]) {
+                lastKnownValues[key] = this.getStorageDirectoryForWorkspace(workspace);
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            this.context.globalState.update('lastKnownStorageDirectories', lastKnownValues);
+        }
+    }
+
+
+    // SET DELEGATES
     
-    private getString(key: string, defaultValue: string): string {
-        return this.config.get<string>(key, defaultValue);
-    }
-
-    private refreshConfiguration(): void {
-        this.config = vscode.workspace.getConfiguration('promptScaffold');
-    }
-
-    setStorageFolderNameChangeDelegate(delegate: (oldName: string, newName: string) => Promise<void>): void {
-        this.logMessage(`Registered storage folder name change delegate...`);
+    setStorageFolderNameChangeDelegate(delegate: (workspace: vscode.WorkspaceFolder, oldName: string, newName: string) => Promise<void>): void {
         this.storageFolderNameChangeDelegate = delegate;
+        this.logMessage('Storage folder name change delegate set');
     }
 
-    async updateConfigurationAsync(key: string, value: string, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global): Promise<void> {
-        this.logMessage(`Attempting to set configuration value: target=${target.toString()}, key=${key}, value=${value}`);
-        try {
-            if (key === 'extensionStorageDirectory') {
-                const oldValue = this.getString(key, '');
-                await this.updateConfigurationFilePathAsync(key, value, target);
-                if (oldValue && this.storageFolderNameChangeDelegate) {
-                    this.logMessage(`Invoking storage folder name change delegate`);
-                    await this.storageFolderNameChangeDelegate(oldValue, value);
-                }
-            }
-            else if (key.endsWith('DefaultPath')) {
-                await this.updateConfigurationFilePathAsync(key, value, target);
-            }
-            else {
-                await this.config.update(key, value, target);
-            }
-            this.refreshConfiguration();
-            this.logMessage(`Successfully updated configuration: ${key}`);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            this.logError(errorMessage);
-            vscode.window.showErrorMessage(`Failed to update configuration ${key}: ${errorMessage}`);
-            throw error;
-        }
+    setRefreshStorageFolderDelegate(delegate: (workspace: vscode.WorkspaceFolder, oldName: string, newName: string) => Promise<void>): void {
+        this.refreshStorageFolderDelegate = delegate;
+        this.logMessage('Refresh storage folder delegate set');
     }
 
-    private async updateConfigurationFilePathAsync(key: string, value: string, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global): Promise<void>{
-        if (await this.isValidFilePathAsync(value)) {
-            await this.config.update(key, value, target);
-        } else {
-            const errorMessage = `Can't set ${key} to an invalid file path: ${value}`;
-            this.logError(errorMessage);
-            throw new Error(errorMessage);
-        }
-    }
 
-    getExtensionStorageFolderName(): string {
-        return this.getString('workspaceInfoFolderName', '.prompt-scaffold');
+    // MISC CONFIGURATION INFO GETTERS
+
+    getStorageDirectoryForWorkspace(workspace: vscode.WorkspaceFolder): string {
+        // Always use workspace configuration, falling back to user settings if not set
+        const config = vscode.workspace.getConfiguration('promptScaffold', workspace.uri);
+        return config.get<string>('extensionStorageDirectory', '.prompt-scaffold');
     }
     
-    
+    getExtensionStorageFolderName(workspace: vscode.WorkspaceFolder): string {
+        return this.getStorageDirectoryForWorkspace(workspace);
+    }
+
     getExtensionStorageFileDefaultContentPath(fileType: FileType): string {
         const configKey = this.configKeyMap[fileType];
         if (!configKey) {
@@ -107,7 +97,180 @@ export class ConfigurationManager extends BaseManager {
 
         return this.getDefaultFilePath(fileType);
     }
+
+    // CONFIGRUATION MANAGEMENT
+    async initializeWorkspaceConfiguration() {
+        this.logMessage(`Initializing configuration for workspace`);
+        
+        // Get the default storage directory name from user settings
+        const defaultStorageDir = vscode.workspace.getConfiguration('promptScaffold').get<string>('extensionStorageDirectory', '.prompt-scaffold');
+        
+        // Set the workspace-level configuration if it's not already set
+        const workspaceConfig = vscode.workspace.getConfiguration('promptScaffold');
+        const currentValue = workspaceConfig.get<string>('extensionStorageDirectory');
+        
+        if (currentValue === undefined) {
+            await workspaceConfig.update('extensionStorageDirectory', defaultStorageDir, vscode.ConfigurationTarget.Workspace);
+            this.logMessage(`Set workspace configuration to ${defaultStorageDir}`);
+        } else {
+            this.logMessage(`Workspace already has configuration: ${currentValue}`);
+        }
+    }
+
+    async updateConfigurationAsync(key: string, value: string, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global): Promise<void> {
+        this.logMessage(`Attempting to set configuration value: target=${target.toString()}, key=${key}, value=${value}`);
+        try {
+            if (key === 'extensionStorageDirectory') {
+                if (await this.isValidFilePathAsync(value)) {
+                    await this.updateConfigurationFilePathAsync(key, value, target);
+                    
+                    // Handle the change for each affected workspace
+                    const workspaces = this.getAffectedWorkspaces(target);
+                    for (const workspace of workspaces) {
+                        const oldValue = this.getStorageDirectoryForWorkspace(workspace);
+                        if (oldValue !== value && this.storageFolderNameChangeDelegate) {
+                            this.logMessage(`Invoking storage folder name change delegate for workspace: ${workspace.name}`);
+                            await this.storageFolderNameChangeDelegate(workspace, oldValue, value);
+                        }
+                    }
+        
+                    // Update the last known value
+                    if (target !== vscode.ConfigurationTarget.Global) {
+                        const workspace = this.getWorkspaceFromTarget(target);
+                        if (workspace) {
+                            this.updateLastKnownStorageDirectory(workspace, value);
+                        }
+                    }
+                } else {
+                    throw new Error(`Specified extension storage directory value is not a valid file name: ${value}`);
+                }
+            } else if (key.endsWith('DefaultPath')) {
+                await this.updateConfigurationFilePathAsync(key, value, target);
+            } else {
+                const config = vscode.workspace.getConfiguration('promptScaffold');
+                await config.update(key, value, target);
+            }
+            this.logMessage(`Successfully updated configuration: ${key}`);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            this.logError(errorMessage);
+            vscode.window.showErrorMessage(`Failed to update configuration ${key}: ${errorMessage}`);
+            throw error;
+        }
+    }
     
+    updateLastKnownStorageDirectory(workspace: vscode.WorkspaceFolder, value: string) {
+        const lastKnownValues = this.context.globalState.get<Record<string, string>>('lastKnownStorageDirectories') || {};
+        lastKnownValues[workspace.uri.toString()] = value;
+        this.context.globalState.update('lastKnownStorageDirectories', lastKnownValues);
+    }
+    
+
+    // PRIVATE HELPERS
+        
+    private getString(key: string, defaultValue: string, resource?: vscode.Uri): string {
+        return vscode.workspace.getConfiguration('promptScaffold', resource)
+            .get<string>(key, defaultValue);
+    }
+
+
+    private setupConfigurationChangeListener() {
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('promptScaffold.extensionStorageDirectory')) {
+                this.handleStorageDirectoryChange();
+            }
+        });
+    }
+
+    private async handleStorageDirectoryChange() {
+        const workspaces = vscode.workspace.workspaceFolders || [];
+        if (workspaces.length === 0) { return; }
+    
+        const workspaceConfig = vscode.workspace.getConfiguration('promptScaffold', workspaces[0].uri);
+        const newValue = workspaceConfig.get<string>('extensionStorageDirectory', '.prompt-scaffold');
+        const lastKnownValue = this.context.workspaceState.get<string>('lastKnownStorageDirectory') || '.prompt-scaffold';
+    
+        if (newValue !== lastKnownValue) {
+            this.logMessage(`Storage directory changed. Old: ${lastKnownValue}, New: ${newValue}`);
+            
+            let errors = false;
+            for (const workspace of workspaces) {
+                if (this.storageFolderNameChangeDelegate) {
+                    try {
+                        await this.storageFolderNameChangeDelegate(workspace, lastKnownValue, newValue);
+                        this.logMessage(`Successfully updated storage folder for workspace: ${workspace.name}`);
+                    } catch (error) {
+                        errors = true;
+                        this.logError(`Error updating storage folder for workspace ${workspace.name}: ${error}`);
+                    }
+                }
+            }
+    
+            if (errors) {
+                vscode.window.showWarningMessage(
+                    'There were errors updating some storage folders. You may lose data if you refresh. Would you like to refresh all files or manually review?',
+                    'Refresh (May Lose Data)', 'I\'ll Review Manually'
+                ).then(selection => {
+                    if (selection === 'Refresh (May Lose Data)') {
+                        this.refreshAllStorageFiles(lastKnownValue, newValue);
+                    } else {
+                        vscode.window.showInformationMessage(
+                            'Please review and update the extension storage folder (from old name to new name) in each workspace folder manually.'
+                        );
+                    }
+                });
+            } else {
+                vscode.window.showInformationMessage('Storage directories successfully updated.');
+            }
+    
+            this.context.workspaceState.update('lastKnownStorageDirectory', newValue);
+        }
+    }
+    
+    private async refreshAllStorageFiles(lastKnownValue: string, newValue: string) {
+        const workspaces = vscode.workspace.workspaceFolders || [];
+        for (const workspace of workspaces) {
+            if (this.refreshStorageFolderDelegate) {
+                try {
+                    await this.refreshStorageFolderDelegate(workspace, lastKnownValue, newValue);
+                    this.logMessage(`Refreshed storage folder for workspace ${workspace.name}`);
+                } catch (error) {
+                    this.logError(`Error refreshing storage folder for workspace ${workspace.name}: ${error}`);
+                }
+            }
+        }
+    }
+    
+    private getAffectedWorkspaces(target: vscode.ConfigurationTarget): readonly vscode.WorkspaceFolder[] {
+        if (target === vscode.ConfigurationTarget.Global) {
+            // Global changes affect all workspaces
+            return vscode.workspace.workspaceFolders || [];
+        } else if (target === vscode.ConfigurationTarget.Workspace) {
+            // Workspace changes affect all folders in the current workspace
+            return vscode.workspace.workspaceFolders || [];
+        } else if (target === vscode.ConfigurationTarget.WorkspaceFolder) {
+            // WorkspaceFolder changes only affect the active workspace folder
+            const activeTextEditor = vscode.window.activeTextEditor;
+            if (activeTextEditor) {
+                const workspaceFolder = vscode.workspace.getWorkspaceFolder(activeTextEditor.document.uri);
+                return workspaceFolder ? [workspaceFolder] : [];
+            }
+        }
+        return [];
+    }
+    
+    // Validates that the property being set is a valid file name (for file name extension configuration settings)
+    private async updateConfigurationFilePathAsync(key: string, value: string, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global): Promise<void> {
+        if (await this.isValidFilePathAsync(value)) {
+            const config = vscode.workspace.getConfiguration('promptScaffold');
+            await config.update(key, value, target);
+        } else {
+            const errorMessage = `Can't set ${key} to an invalid file path: ${value}`;
+            this.logError(errorMessage);
+            throw new Error(errorMessage);
+        }
+    }
+
     private getDefaultFilePath(fileType: FileType): string {
         if (this.isSystemFile(fileType)) {
             return vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'defaultFileContent', SYSTEM_FILES[fileType]).fsPath;
@@ -119,127 +282,22 @@ export class ConfigurationManager extends BaseManager {
     private isSystemFile(fileType: FileType): fileType is keyof typeof SYSTEM_FILES {
         return fileType in SYSTEM_FILES;
     }
-    
-}
 
-/*
-export class ConfigurationManager {
-    private readonly configSection = 'promptScaffold';
-    
-    getSystemPath(): string
-    {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            throw new Error('Can\'t get system path (workspace root). Is there a workspace folder open?');
-        }
-        return workspaceFolder.uri.fsPath;
-    }
-    getExtensionDirectory(): string
-    {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return config.get('extensionDirectory', '.prompt-scaffold/');
-    }
-
-    // info directory (holds user-managed config files which inform prompt)
-    getInfoDirectory(): string {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return path.join(
-            this.getExtensionDirectory(),
-            config.get('infoDirectory', 'info/'));
-    } 
-    getInfoDirectorySystemPath(): string {
-        return path.join(this.getSystemPath(), this.getInfoDirectory());
-    }
-    getSystemPromptSystemPath(): string {
-        return path.join(this.getInfoDirectorySystemPath(), "system-prompt.txt");
-    }
-    getDescriptionSystemPath(): string {
-        return path.join(this.getInfoDirectorySystemPath(), "project-description.txt");
-    }
-    getSessionGoalsSystemPath(): string {
-        return path.join(this.getInfoDirectorySystemPath(), "session-goals.txt");
-    }
-    getExcludeFileContextSystemPath(): string {
-        return path.join(this.getInfoDirectorySystemPath(), "exclude.gitignore");
-    }
-    getIncludeFileContextSystemPath(): string {
-        return path.join(this.getInfoDirectorySystemPath(), "include.gitignore");
-    }
-
-    
-    
-    // out directory (holds extension-managed files can be used to supply prompt)
-    getOutDirectory(): string {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return path.join(
-            this.getExtensionDirectory(),
-            config.get('outputDirectory', 'out/'));
-    }
-    getOutDirectorySystemPath(): string {
-        return path.join(this.getSystemPath(), this.getOutDirectory());
-    }
-
-    getPromptTxtOutFileName(): string {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return config.get('promptTextFileName', 'prompt.txt');
-    }
-    getSummaryOutFileName(): string {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return config.get('summaryFileName', 'project-summary.txt');
-    }
-    getStructureOutFileName(): string {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return config.get('structureFileName', 'project-structure.txt');
-    }
-    getAggregateOutFileName(): string {
-        const config = vscode.workspace.getConfiguration(this.configSection);
-        return config.get('aggregateFileName', 'project-code-aggregate.txt');
-    }
-
-
-    // this one references the extension files
-    getProjectInfoDefaultsDirectorySystemPath(): string {
-        return path.resolve(__dirname, '..', 'src', 'project-info-defaults');
-    }
-
-
-    async ensureOutputDirectoryExists(): Promise<void> {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            throw new Error('No workspace folder is open');
-        }
-
-        const outputDir = path.join(workspaceFolder.uri.fsPath, this.getOutDirectory());
-        
-        try {
-            await fs.promises.mkdir(outputDir, { recursive: true });
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                vscode.window.showErrorMessage(`Error creating the output directory: ${error.message}`);
-            } else {
-                vscode.window.showErrorMessage('An unknown error occurred while creating the output directory.');
+    private getWorkspaceFromTarget(target: vscode.ConfigurationTarget): vscode.WorkspaceFolder | undefined {
+        if (target === vscode.ConfigurationTarget.Global) {
+            return undefined; // Global target doesn't correspond to a specific workspace
+        } else if (target === vscode.ConfigurationTarget.Workspace) {
+            // For workspace target, return the first workspace folder
+            return vscode.workspace.workspaceFolders?.[0];
+        } else if (target === vscode.ConfigurationTarget.WorkspaceFolder) {
+            // For workspace folder target, try to get the active workspace folder
+            const activeTextEditor = vscode.window.activeTextEditor;
+            if (activeTextEditor) {
+                return vscode.workspace.getWorkspaceFolder(activeTextEditor.document.uri);
             }
         }
+        return undefined;
     }
-
-    validateConfiguration(): string[] {
-        const errors: string[] = [];
-        const outputDir = this.getOutDirectory();
-        const structureFileName = this.getStructureOutFileName();
-
-        if (!outputDir || outputDir.trim() === '') {
-            errors.push('Output directory cannot be empty.');
-        }
-
-        if (!structureFileName || structureFileName.trim() === '') {
-            errors.push('Structure file name cannot be empty.');
-        }
-
-        if (structureFileName.includes(path.sep)) {
-            errors.push('Structure file name cannot contain path separators.');
-        }
-
-        return errors;
-    }    
+    
 }
-*/
+

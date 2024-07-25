@@ -322,7 +322,7 @@ export class FileSystemManager extends BaseManager {
         // review this implementation and potentially consolidate
         const hasGitignore = await this.workspaceHasGitignoreAsync(workspace);
         const gitignoreParser = hasGitignore ? await this.getWorkspaceGitignoreAsync(workspace) : null;
-        const extStorageFolderName = this.configurationManager.getExtensionStorageFolderName();
+        const extStorageFolderName = this.configurationManager.getExtensionStorageFolderName(workspace);
     
         // Combine multiple exclude patterns into a single glob pattern
         const excludePattern = `**/{.git,${extStorageFolderName}}/**`;

@@ -4,94 +4,328 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { STORAGE_FOLDER_STRUCTURE, SYSTEM_FILES, WORKSPACE_FILES } from '../constants/extensionStorageFolderItems';
 
+
 suite('Extension Test Suite', () => {
     const extensionId = 'Memeticode.propmt-scaffold'; // Replace with your actual extension ID
     let extension: vscode.Extension<any>;
     const tempWorkspacePath = path.join(__dirname, '..', '..', 'test-workspace');
-    const storagefolderName = '.prompt-scaffold'; // Replace with your actual storage folder name
+    const timeout = 2000; 
+    let storageFolderName: string;
 
+    
     suiteSetup(async () => {
-        // Get the extension
         extension = vscode.extensions.getExtension(extensionId)!;
         assert.ok(extension, 'Extension not found');
-
-        // Activate the extension
         await extension.activate();
         
-        // Ensure the temp workspace directory exists
         if (!fs.existsSync(tempWorkspacePath)) {
             fs.mkdirSync(tempWorkspacePath, { recursive: true });
         }
+
+        const config = vscode.workspace.getConfiguration('promptScaffold');
+        storageFolderName = config.get('extensionStorageDirectory', '.prompt-scaffold');
     });
 
     suiteTeardown(async () => {
-        // Clean up the temp workspace
         if (fs.existsSync(tempWorkspacePath)) {
-            fs.rmdirSync(tempWorkspacePath, { recursive: true });
+            fs.rmSync(tempWorkspacePath, { recursive: true, force: true });
         }
     });
 
-    test('Extension activates with no workspace folders', async () => {
-        // Ensure no workspace folders are open
-        vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
-        
-        assert.strictEqual(vscode.workspace.workspaceFolders?.length, 0, 'Workspace should have no folders');
-        assert.ok(extension.isActive, 'Extension should be active');
+    suite('Basic Activation and Configuration', () => {
+        test('Extension activates with no workspace folders', async () => {
+            // Ensure no workspace folders are open
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            
+            assert.strictEqual(vscode.workspace.workspaceFolders?.length, 0, 'Workspace should have no folders');
+            assert.ok(extension.isActive, 'Extension should be active');
+        });
+
+        test('Extension registers its commands', () => {
+            return vscode.commands.getCommands(true).then((commands) => {
+                const extensionCommands = [
+                    'promptScaffold.initializeWorkspaceStorageFolders',
+                    // Add other commands later
+                ];
+
+                for (const command of extensionCommands) {
+                    assert.ok(commands.includes(command), `Command ${command} should be registered`);
+                }
+            });
+        });
+
+        test('Default configuration is set correctly', () => {
+            const config = vscode.workspace.getConfiguration('promptScaffold');
+            assert.strictEqual(
+                config.get('extensionStorageDirectory'),
+                '.prompt-scaffold',
+                'Default extensionStorageDirectory should be .prompt-scaffold'
+            );
+            // Add checks for other default configuration values
+        });
     });
 
-    test('Adding first workspace folder creates all expected files', async () => {
-        const folderPath = path.join(tempWorkspacePath, 'folder1');
-        fs.mkdirSync(folderPath, { recursive: true });
+    suite('Single Workspace Folder', () => {
+        const folderName = 'testFolder';
+        let folderPath: string;
+        let storageFolderName: string;
 
-        // Add the folder to the workspace
-        const added = vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folderPath) });
-        assert.ok(added, 'Failed to add folder to workspace');
+        setup(async () => {
+            // Clear workspace folders
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            
+            folderPath = path.join(tempWorkspacePath, folderName);
+            fs.mkdirSync(folderPath, { recursive: true });
+            
+            const config = vscode.workspace.getConfiguration('promptScaffold');
+            storageFolderName = config.get('extensionStorageDirectory', '.prompt-scaffold');
+        });
 
-        // Wait for the extension to process the new folder
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        teardown(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            if (fs.existsSync(folderPath)) {
+                fs.rmSync(folderPath, { recursive: true, force: true });
+            }
+        });
 
-        // Check for system-info and workspace-info directories and files
-        const storagePath = path.join(folderPath, storagefolderName);
-        assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info directory should exist');
-        assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info directory should exist');
-        assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out directory should exist');
+        test('Adding first workspace folder creates all expected files', async () => {
+            const added = vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folderPath) });
+            assert.ok(added, 'Failed to add folder to workspace');
 
-        // Check for system files
-        for (const file of Object.values(SYSTEM_FILES)) {
-            assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO, file)), `${file} should exist in system-info`);
-        }
+            // Wait for the extension to process the new folder
+            await new Promise(resolve => setTimeout(resolve, timeout));
 
-        // Check for workspace files
-        for (const file of Object.values(WORKSPACE_FILES)) {
-            assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO, file)), `${file} should exist in workspace-info`);
-        }
+            const storagePath = path.join(folderPath, storageFolderName);
+            assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info directory should exist');
+            assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info directory should exist');
+            assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out directory should exist');
+
+            for (const file of Object.values(SYSTEM_FILES)) {
+                assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO, file)), `${file} should exist in system-info`);
+            }
+
+            for (const file of Object.values(WORKSPACE_FILES)) {
+                assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO, file)), `${file} should exist in workspace-info`);
+            }
+        });
+
+        test('Storage folder name matches configuration', async () => {
+            const added = vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folderPath) });
+            assert.ok(added, 'Failed to add folder to workspace');
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const storagePath = path.join(folderPath, storageFolderName);
+            assert.ok(fs.existsSync(storagePath), `Storage folder ${storageFolderName} should exist`);
+        });
+
+        test('Changing storage folder name updates directory structure', async () => {
+            const added = vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folderPath) });
+            assert.ok(added, 'Failed to add folder to workspace');
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const oldStoragePath = path.join(folderPath, storageFolderName);
+            assert.ok(fs.existsSync(oldStoragePath), 'Old storage folder should exist');
+
+            const newStorageName = '.new-prompt-scaffold';
+            await vscode.workspace.getConfiguration('promptScaffold').update('extensionStorageDirectory', newStorageName, vscode.ConfigurationTarget.Workspace);
+
+            // Wait for the extension to process the configuration change
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const newStoragePath = path.join(folderPath, newStorageName);
+            assert.ok(fs.existsSync(newStoragePath), 'New storage folder should exist');
+            assert.ok(!fs.existsSync(oldStoragePath), 'Old storage folder should not exist');
+
+            // Check if all expected files and folders exist in the new location
+            assert.ok(fs.existsSync(path.join(newStoragePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info directory should exist in new location');
+            assert.ok(fs.existsSync(path.join(newStoragePath, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info directory should exist in new location');
+            assert.ok(fs.existsSync(path.join(newStoragePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out directory should exist in new location');
+        });
     });
 
-    test('Adding second workspace folder creates only workspace-info files', async () => {
-        const folderPath = path.join(tempWorkspacePath, 'folder2');
-        fs.mkdirSync(folderPath, { recursive: true });
 
-        // Add the second folder to the workspace
-        const added = vscode.workspace.updateWorkspaceFolders(1, 0, { uri: vscode.Uri.file(folderPath) });
-        assert.ok(added, 'Failed to add second folder to workspace');
+    suite('Multi-Folder Workspace', () => {
+        const folder1Name = 'folder1';
+        const folder2Name = 'folder2';
+        let folder1Path: string;
+        let folder2Path: string;
 
-        // Wait for the extension to process the new folder
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setup(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            
+            folder1Path = path.join(tempWorkspacePath, folder1Name);
+            folder2Path = path.join(tempWorkspacePath, folder2Name);
+            fs.mkdirSync(folder1Path, { recursive: true });
+            fs.mkdirSync(folder2Path, { recursive: true });
+        });
 
-        // Check for system-info and workspace-info directories
-        const storagePath = path.join(folderPath, storagefolderName);
-        assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info directory should exist');
-        assert.ok(!fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info directory should not exist');
-        assert.ok(!fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out directory should not exist');
+        teardown(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            if (fs.existsSync(folder1Path)) { fs.rmSync(folder1Path, { recursive: true, force: true }); }
+            if (fs.existsSync(folder2Path)) { fs.rmSync(folder2Path, { recursive: true, force: true }); }
+        });
 
-        // Check for workspace files in system-info
-        for (const file of Object.values(WORKSPACE_FILES)) {
-            assert.ok(fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO, file)), `${file} should exist in system-info`);
-        }
+        test('Adding second workspace folder creates only workspace-info files', async () => {
+            vscode.workspace.updateWorkspaceFolders(0, 0, 
+                { uri: vscode.Uri.file(folder1Path) },
+                { uri: vscode.Uri.file(folder2Path) }
+            );
 
-        // Ensure no system files were created
-        for (const file of Object.values(SYSTEM_FILES)) {
-            assert.ok(!fs.existsSync(path.join(storagePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO, file)), `${file} should not exist in system-info`);
-        }
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const storagePath2 = path.join(folder2Path, storageFolderName);
+            assert.ok(fs.existsSync(path.join(storagePath2, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info directory should exist in second folder');
+            assert.ok(!fs.existsSync(path.join(storagePath2, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info directory should not exist in second folder');
+            assert.ok(!fs.existsSync(path.join(storagePath2, STORAGE_FOLDER_STRUCTURE.OUT)), 'out directory should not exist in second folder');
+        });
+
+        test('Root workspace has all folders, others have only workspace-info', async () => {
+            vscode.workspace.updateWorkspaceFolders(0, 0, 
+                { uri: vscode.Uri.file(folder1Path) },
+                { uri: vscode.Uri.file(folder2Path) }
+            );
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const storagePath1 = path.join(folder1Path, storageFolderName);
+            const storagePath2 = path.join(folder2Path, storageFolderName);
+
+            assert.ok(fs.existsSync(path.join(storagePath1, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info should exist in root workspace');
+            assert.ok(fs.existsSync(path.join(storagePath1, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info should exist in root workspace');
+            assert.ok(fs.existsSync(path.join(storagePath1, STORAGE_FOLDER_STRUCTURE.OUT)), 'out should exist in root workspace');
+
+            assert.ok(!fs.existsSync(path.join(storagePath2, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info should not exist in non-root workspace');
+            assert.ok(fs.existsSync(path.join(storagePath2, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info should exist in non-root workspace');
+            assert.ok(!fs.existsSync(path.join(storagePath2, STORAGE_FOLDER_STRUCTURE.OUT)), 'out should not exist in non-root workspace');
+        });
+
+        test('Changing storage folder name updates all workspace folders', async () => {
+            vscode.workspace.updateWorkspaceFolders(0, 0, 
+                { uri: vscode.Uri.file(folder1Path) },
+                { uri: vscode.Uri.file(folder2Path) }
+            );
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const newStorageName = '.new-prompt-scaffold';
+            await vscode.workspace.getConfiguration('promptScaffold').update('extensionStorageDirectory', newStorageName, vscode.ConfigurationTarget.Workspace);
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            assert.ok(fs.existsSync(path.join(folder1Path, newStorageName)), 'New storage folder should exist in first workspace');
+            assert.ok(fs.existsSync(path.join(folder2Path, newStorageName)), 'New storage folder should exist in second workspace');
+            assert.ok(!fs.existsSync(path.join(folder1Path, storageFolderName)), 'Old storage folder should not exist in first workspace');
+            assert.ok(!fs.existsSync(path.join(folder2Path, storageFolderName)), 'Old storage folder should not exist in second workspace');
+        });
+    });
+
+    suite('Configuration Changes', () => {
+        const folderName = 'configTest';
+        let folderPath: string;
+
+        setup(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            folderPath = path.join(tempWorkspacePath, folderName);
+            fs.mkdirSync(folderPath, { recursive: true });
+            vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folderPath) });
+            await new Promise(resolve => setTimeout(resolve, timeout));
+        });
+
+        teardown(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            if (fs.existsSync(folderPath)) { fs.rmSync(folderPath, { recursive: true, force: true }); }
+        });
+
+        test('Updating user settings does not affect existing workspaces', async () => {
+            const originalStoragePath = path.join(folderPath, storageFolderName);
+            assert.ok(fs.existsSync(originalStoragePath), 'Original storage folder should exist');
+
+            const newGlobalStorageName = '.global-prompt-scaffold';
+            await vscode.workspace.getConfiguration('promptScaffold').update('extensionStorageDirectory', newGlobalStorageName, vscode.ConfigurationTarget.Global);
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            assert.ok(fs.existsSync(originalStoragePath), 'Original storage folder should still exist');
+            assert.ok(!fs.existsSync(path.join(folderPath, newGlobalStorageName)), 'New global storage folder should not exist in workspace');
+        });
+
+        test('Updating workspace settings affects all folders in the workspace', async () => {
+            const newWorkspaceStorageName = '.workspace-prompt-scaffold';
+            await vscode.workspace.getConfiguration('promptScaffold').update('extensionStorageDirectory', newWorkspaceStorageName, vscode.ConfigurationTarget.Workspace);
+
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            assert.ok(fs.existsSync(path.join(folderPath, newWorkspaceStorageName)), 'New workspace storage folder should exist');
+            assert.ok(!fs.existsSync(path.join(folderPath, storageFolderName)), 'Old storage folder should not exist');
+        });
+    });
+
+    suite('Workspace Changes', () => {
+        const folder1Name = 'wsChange1';
+        const folder2Name = 'wsChange2';
+        let folder1Path: string;
+        let folder2Path: string;
+
+        setup(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            folder1Path = path.join(tempWorkspacePath, folder1Name);
+            folder2Path = path.join(tempWorkspacePath, folder2Name);
+            fs.mkdirSync(folder1Path, { recursive: true });
+        });
+
+        teardown(async () => {
+            vscode.workspace.updateWorkspaceFolders(0, vscode.workspace.workspaceFolders?.length || 0);
+            if (fs.existsSync(folder1Path)) { fs.rmSync(folder1Path, { recursive: true, force: true }); }
+            if (fs.existsSync(folder2Path)) { fs.rmSync(folder2Path, { recursive: true, force: true }); }
+        });
+
+        test('Adding a new folder to existing workspace initializes it correctly', async () => {
+            vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folder1Path) });
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            fs.mkdirSync(folder2Path, { recursive: true });
+            vscode.workspace.updateWorkspaceFolders(1, 0, { uri: vscode.Uri.file(folder2Path) });
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            assert.ok(fs.existsSync(path.join(folder2Path, storageFolderName, STORAGE_FOLDER_STRUCTURE.WORKSPACE_INFO)), 'workspace-info should exist in new folder');
+        });
+
+        test('Removing a folder from workspace cleans up extension files', async () => {
+            vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.file(folder1Path) });
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const storagePath = path.join(folder1Path, storageFolderName);
+            assert.ok(fs.existsSync(storagePath), 'Storage folder should exist');
+
+            vscode.workspace.updateWorkspaceFolders(0, 1);
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            assert.ok(!fs.existsSync(storagePath), 'Storage folder should be removed');
+        });
+
+        test('Changing root workspace migrates system and out folders', async () => {
+            vscode.workspace.updateWorkspaceFolders(0, 0, 
+                { uri: vscode.Uri.file(folder1Path) },
+                { uri: vscode.Uri.file(folder2Path) }
+            );
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const originalRootStoragePath = path.join(folder1Path, storageFolderName);
+            assert.ok(fs.existsSync(path.join(originalRootStoragePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info should exist in original root');
+            assert.ok(fs.existsSync(path.join(originalRootStoragePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out should exist in original root');
+
+            vscode.workspace.updateWorkspaceFolders(0, 1);
+            await new Promise(resolve => setTimeout(resolve, timeout));
+
+            const newRootStoragePath = path.join(folder2Path, storageFolderName);
+            assert.ok(fs.existsSync(path.join(newRootStoragePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info should exist in new root');
+            assert.ok(fs.existsSync(path.join(newRootStoragePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out should exist in new root');
+            assert.ok(!fs.existsSync(path.join(originalRootStoragePath, STORAGE_FOLDER_STRUCTURE.SYSTEM_INFO)), 'system-info should not exist in old root');
+            assert.ok(!fs.existsSync(path.join(originalRootStoragePath, STORAGE_FOLDER_STRUCTURE.OUT)), 'out should not exist in old root');
+        });
     });
 });
+
+export {};

@@ -23,7 +23,7 @@ export class BaseManager {
         }
     }
     async isValidFilePathAsync(filePath: string): Promise<boolean> {
-        this.logMessage(`Invoked isValidFilePathAsync for path: ${filePath}`);
+        //this.logMessage(`Invoked isValidFilePathAsync for path: ${filePath}`);
         
         try {
             // Check if the path is absolute
@@ -44,7 +44,7 @@ export class BaseManager {
             //     return false;
             // }
     
-            this.logMessage(`isValidFilePathAsync: Valid file path!`);
+            //this.logMessage(`isValidFilePathAsync: Valid file path!`);
             return true;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

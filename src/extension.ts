@@ -5,18 +5,19 @@ import { ExtensionStorageFolderManager } from './managers/extensionStorageFolder
 
 // import { ProjectInfoProvider } from './ui/projectInfoProvider';
 // import { PromptOutTreeProvider } from './ui/promptOutTreeProvider';
-
 // import { PROJECT_INFO_ITEMS } from './config/projectInfoSidebarItems';
 
+
 let outputChannel: vscode.OutputChannel;
+
 export async function activate(context: vscode.ExtensionContext) {
     // Create and store the output channel
     outputChannel = vscode.window.createOutputChannel('Prompt Scaffold');
     context.subscriptions.push(outputChannel);
 
-    // Log activation
     outputChannel.appendLine('Prompt Scaffold extension is activating.');
 
+    // Init managers
     const configManager = new ConfigurationManager("ConfigurationManager", outputChannel, context);  
     outputChannel.appendLine('Initialized ConfigurationManager...');
     
@@ -25,72 +26,46 @@ export async function activate(context: vscode.ExtensionContext) {
     
     const extensionStorageFolderManager = new ExtensionStorageFolderManager("ExtensionStorageFolderManager", outputChannel, configManager, fileSystemManager);
     outputChannel.appendLine('Initialized ExtensionStorageFolderManager...');
-
-
-    // Register the storage folder name change delegate
+    
+    // Register manager delegates
     configManager.setStorageFolderNameChangeDelegate(
         extensionStorageFolderManager.handleStorageFolderNameConfigurationChangeAsync.bind(extensionStorageFolderManager)
     );
+    configManager.setRefreshStorageFolderDelegate(
+        extensionStorageFolderManager.refreshStorageFolderAsync.bind(extensionStorageFolderManager)
+    );
 
-
-    // Initialize all current workspaces
-    if (vscode.workspace.workspaceFolders) {
-        await extensionStorageFolderManager.initializeStorageFoldersAsync();
-    }
+    // Initialize configuration for the entire workspace
+    await configManager.initializeWorkspaceConfiguration();
+    
+    // Initialize storage directories (also handles workspace root folder change)
+    await ExtensionUtils.initializeWorkspaceStorageFoldersAsync(context, outputChannel, extensionStorageFolderManager);
 
 
     // Listen for workspace folder changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeWorkspaceFolders(async (event) => {
-            for (const folder of event.added) {
-                await extensionStorageFolderManager.initializeStorageFolderAsync(folder);
-                outputChannel.appendLine(`Initialized new workspace: ${folder.name}`);
-            }
-            
-            const newRootWorkspace = vscode.workspace.workspaceFolders?.[0];
-            const oldRootWorkspace = event.removed.find(folder => extensionStorageFolderManager.isRootWorkspace(folder));
-            
-            if (newRootWorkspace && oldRootWorkspace && newRootWorkspace !== oldRootWorkspace) {
-                await extensionStorageFolderManager.handleRootWorkspaceChangeAsync(oldRootWorkspace, newRootWorkspace);
-                outputChannel.appendLine(`Root workspace changed from ${oldRootWorkspace.name} to ${newRootWorkspace.name}`);
-            }
-    
-            // Check for project-info and out folders after workspace changes
-            await extensionStorageFolderManager.validateStorageFoldersAsync();
+
+            // Log changes
+            outputChannel.appendLine('Workspace folders changed:');
+            for (const folder of event.added) { outputChannel.appendLine(`New workspace added: ${folder.name}`); }
+            for (const folder of event.removed) { outputChannel.appendLine(`Workspace removed: ${folder.name}`); }
+
+            // Reinitialize storage directories
+            await ExtensionUtils.initializeWorkspaceStorageFoldersAsync(context, outputChannel, extensionStorageFolderManager);
+
+            outputChannel.appendLine('Storage directories reinitialized after workspace changes.');
         })
     );
 
-    // Command to manually trigger workspace initialization
+    // Command to manually trigger workspace initialization/refresh
     context.subscriptions.push(
-        vscode.commands.registerCommand('promptScaffold.initializeWorkspaces', async () => {
+        vscode.commands.registerCommand('promptScaffold.initializeWorkspaceStorageFolders', async () => {
             if (vscode.workspace.workspaceFolders) {
                 await extensionStorageFolderManager.initializeStorageFoldersAsync();
-                //vscode.window.showInformationMessage('Workspaces initialized successfully.');
             } else {
                 vscode.window.showWarningMessage('No workspaces found to initialize.');
             }
-        })
-    );
-
-    // Command to show the current root workspace
-    context.subscriptions.push(
-        vscode.commands.registerCommand('promptScaffold.showRootWorkspace', () => {
-            const rootWorkspace = vscode.workspace.workspaceFolders?.[0];
-            if (rootWorkspace) {
-                vscode.window.showInformationMessage(`Current root workspace: ${rootWorkspace.name}`);
-                outputChannel.appendLine(`Current root workspace: ${rootWorkspace.name}`);
-            } else {
-                vscode.window.showWarningMessage('No root workspace found.');
-                outputChannel.appendLine('No root workspace found.');
-            }
-        })
-    );
-
-    // Command to refresh storage folders
-    context.subscriptions.push(
-        vscode.commands.registerCommand('promptScaffold.refreshStorageFolders', async () => {
-            await extensionStorageFolderManager.refreshStorageFoldersAsync();
-            vscode.window.showInformationMessage('Storage folders refreshed successfully.');
         })
     );
 
@@ -103,6 +78,65 @@ export function deactivate() {
     outputChannel.appendLine('Prompt Scaffold extension deactivated successfully.');
 }
 
+
+export class ExtensionUtils {
+
+    // Handles creating storage directories and when workspace root folder changes
+    // Should perhaps be moved into extensionStorageFolderManager at some point
+    static async initializeWorkspaceStorageFoldersAsync(
+        context: vscode.ExtensionContext,
+        outputChannel: vscode.OutputChannel,
+        extensionStorageFolderManager: ExtensionStorageFolderManager
+    ): Promise<void> {
+        
+        // get unique workspace id from workspace code folder
+        const workspaceId = vscode.workspace.workspaceFile?.fsPath || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+        if (!workspaceId) {
+            outputChannel.appendLine('No valid workspace found. Unable to initialize workspace storage files. Exiting initialization.');
+            return;
+        }
+        
+        // check if previous root workspace has changed
+        const { previousRootWorkspace, currentRootWorkspace } = this.getRootWorkspaces(context, workspaceId);
+        if (!!previousRootWorkspace && !!currentRootWorkspace && previousRootWorkspace !== currentRootWorkspace) {
+            outputChannel.appendLine(`Workspace root directory has changed. Current: ${currentRootWorkspace}, Prior: ${previousRootWorkspace}`);
+            await this.migrateWorkspaceAsync(extensionStorageFolderManager, previousRootWorkspace, currentRootWorkspace);
+        }
+
+        // cache current workspace root folder, associated with workspace id
+        // must use global storage because the workspace reloads on root folder change  
+        this.updateStoredRootWorkspace(context, workspaceId, currentRootWorkspace);
+
+        // Initialize workspace folders
+        if (vscode.workspace.workspaceFolders) {
+            await extensionStorageFolderManager.initializeStorageFoldersAsync();
+        }
+
+    }
+
+    private static getRootWorkspaces(context: vscode.ExtensionContext, workspaceId: string): { previousRootWorkspace: string | undefined, currentRootWorkspace: string | null } {
+        const previousRootWorkspaces = context.globalState.get<Record<string, string>>('previousRootWorkspaces') || {};
+        return {
+            previousRootWorkspace: previousRootWorkspaces[workspaceId],
+            currentRootWorkspace: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? null
+        };
+    }
+    private static async migrateWorkspaceAsync(extensionStorageFolderManager: ExtensionStorageFolderManager, previousRootWorkspace: string, currentRootWorkspace: string): Promise<void> {
+        const getWorkspaceName = (uriString: string): string => vscode.Uri.parse(uriString).path.split('/').pop() || '';
+        await extensionStorageFolderManager.handleRootWorkspaceChangeAsync(
+            { uri: vscode.Uri.parse(previousRootWorkspace), name: getWorkspaceName(previousRootWorkspace), index: 0 },
+            { uri: vscode.Uri.parse(currentRootWorkspace), name: getWorkspaceName(currentRootWorkspace), index: 0 }
+        );
+    }
+
+    private static updateStoredRootWorkspace(context: vscode.ExtensionContext, workspaceId: string, currentRootWorkspace: string | null): void {
+        if (currentRootWorkspace) {
+            const previousRootWorkspaces = context.globalState.get<Record<string, string>>('previousRootWorkspaces') || {};
+            previousRootWorkspaces[workspaceId] = currentRootWorkspace;
+            context.globalState.update('previousRootWorkspaces', previousRootWorkspaces);
+        }
+    }
+}
 
 /*
     async function setupProviders() {
