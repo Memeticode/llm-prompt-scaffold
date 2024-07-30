@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { BaseManager } from './baseManager';
 import { ConfigurationManager } from './configurationManager';
-import { ContextGitignoreParser, GitignoreParser } from '../utils/gitIgnoreParser';
+import { FileFilter, IncludeExcludeGitignoreParser, GitignoreParser } from '../utils/fileFilters';
 
 // file manager provides methods for working with files & directories and getting workspaces
 // it's mostly used by other manager classes
@@ -15,10 +15,14 @@ export class FileSystemManager extends BaseManager {
     ) {
         super(logName, outputChannel);
     }
+    
+    // Get the vscode file type for a given vscode uri 
+    async getFileTypeAsync(uri: vscode.Uri): Promise<vscode.FileType> {
+        const stat = await vscode.workspace.fs.stat(uri);
+        return stat.type;
+    }
 
     // FILE OPERATIONS
-
-
     async fileExistsAsync(filePath: string): Promise<boolean> {
         try {
             await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
@@ -158,6 +162,35 @@ export class FileSystemManager extends BaseManager {
         } catch {
             return false;
         }
+    }
+
+
+    async getDirectoryContentsAsync(uri: vscode.Uri, filters?: FileFilter | FileFilter[]): Promise<[string, vscode.FileType][]> {
+        const entries = await vscode.workspace.fs.readDirectory(uri);
+        if (!filters) {
+            return entries;
+        }
+
+        const filterArray = Array.isArray(filters) ? filters : [filters];
+        const filteredEntries = [];
+
+        for (const entry of entries) {
+            const entryUri = vscode.Uri.joinPath(uri, entry[0]);
+            if (await this.shouldIncludeFile(entryUri, filterArray)) {
+                filteredEntries.push(entry);
+            }
+        }
+
+        return filteredEntries;
+    }
+
+    private async shouldIncludeFile(uri: vscode.Uri, filters: FileFilter[]): Promise<boolean> {
+        for (const filter of filters) {
+            if (!(await filter.shouldInclude(uri))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     async deleteDirectoryAsync(uri: vscode.Uri, recursive: boolean = true): Promise<void> {
@@ -310,35 +343,69 @@ export class FileSystemManager extends BaseManager {
         return parser;
     }
     
-    async getAllFilesInWorkspaceAsync(workspace: vscode.WorkspaceFolder): Promise<string[]> {
+
+    async getAllFilesInWorkspaceAsync(workspace: vscode.WorkspaceFolder, filters?: FileFilter | FileFilter[]): Promise<vscode.Uri[]> {
         const files = await vscode.workspace.findFiles(
             new vscode.RelativePattern(workspace, '**/*'),
             new vscode.RelativePattern(workspace, '**/.git/**')
         );
-        return files.map(file => file.fsPath);
+
+        if (!filters) {
+            return files;
+        }
+
+        const filterArray = Array.isArray(filters) ? filters : [filters];
+
+        const filteredFiles = [];
+        for (const file of files) {
+            let includeFile = true;
+            for (const filter of filterArray) {
+                if (!(await filter.shouldInclude(file))) {
+                    includeFile = false;
+                    break;
+                }
+            }
+            if (includeFile) {
+                filteredFiles.push(file);
+            }
+        }
+
+        return filteredFiles;
     }
 
-    async getAllFilesInWorkspaceApplyGitignoreAsync(workspace: vscode.WorkspaceFolder): Promise<string[]> {
-        // review this implementation and potentially consolidate
-        const hasGitignore = await this.workspaceHasGitignoreAsync(workspace);
-        const gitignoreParser = hasGitignore ? await this.getWorkspaceGitignoreAsync(workspace) : null;
+
+    async getAllFilesInWorkspaceApplyGitignoreAsync(workspace: vscode.WorkspaceFolder): Promise<vscode.Uri[]> {
         const extStorageFolderName = this.configurationManager.getExtensionStorageFolderName(workspace);
-    
-        // Combine multiple exclude patterns into a single glob pattern
         const excludePattern = `**/{.git,${extStorageFolderName}}/**`;
     
         const files = await vscode.workspace.findFiles(
-            new vscode.RelativePattern(workspace, '**/*'),  // Include all files in the workspace
-            new vscode.RelativePattern(workspace, excludePattern)  // Exclude .git and extension storage directories
+            new vscode.RelativePattern(workspace, '**/*'),
+            new vscode.RelativePattern(workspace, excludePattern)
         );
     
-        const result: string[] = [];
+        const gitignoreFilter = await this.getWorkspaceGitignoreFilterAsync(workspace);
+        
+        const filteredFiles = [];
         for (const file of files) {
-            const relativePath = path.relative(workspace.uri.fsPath, file.fsPath);
-            if (!gitignoreParser || !gitignoreParser.shouldIgnore(relativePath)) {
-                result.push(file.fsPath);
+            if (await gitignoreFilter.shouldInclude(file)) {
+                filteredFiles.push(file);
             }
         }
-        return result;
+    
+        return filteredFiles;
+    }
+    
+    private async getWorkspaceGitignoreFilterAsync(workspace: vscode.WorkspaceFolder): Promise<FileFilter> {
+        const hasGitignore = await this.workspaceHasGitignoreAsync(workspace);
+        if (hasGitignore) {
+            const gitignoreParser = new GitignoreParser(workspace.uri, '.gitignore');
+            await gitignoreParser.loadRules();
+            return gitignoreParser;
+        } else {
+            // If no .gitignore exists, return a filter that includes everything
+            return {
+                shouldInclude: async () => true
+            };
+        }
     }
 }

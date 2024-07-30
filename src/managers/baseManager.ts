@@ -1,27 +1,15 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { BaseLogger } from '../utils/baseLogger';
 
-export class BaseManager {
+export class BaseManager extends BaseLogger {
     constructor(
-        private logName: string,
-        private outputChannel: vscode.OutputChannel
-    ) { }
-
-    logMessage(message: string): void {
-        if (this.outputChannel)
-        {
-            let logPrefix = this.logName ? `${this.logName} - ` : '';
-            this.outputChannel.appendLine(`${logPrefix}${message ? message : ''}`);
-        }
-    }    
-
-    logError(message: string): void {
-        if (this.outputChannel)
-        {
-            let logPrefix = this.logName ? `${this.logName} - ` : '';
-            this.outputChannel.appendLine(`${logPrefix}ERROR - ${message ? message : ''}`);
-        }
+        logName: string,
+        outputChannel: vscode.OutputChannel
+    ) {
+        super(logName, outputChannel);
     }
+
     async isValidFilePathAsync(filePath: string): Promise<boolean> {
         //this.logMessage(`Invoked isValidFilePathAsync for path: ${filePath}`);
         

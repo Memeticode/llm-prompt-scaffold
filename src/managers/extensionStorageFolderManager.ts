@@ -38,10 +38,30 @@ export class ExtensionStorageFolderManager extends BaseManager {
                 this.logMessage(`Old directory doesn't exist for workspace ${workspace.name}. Creating new directory.`);
                 await this.fileSystemManager.createDirectoryIfNotExistsAsync(newUri);
             }
+
+            // Update the files.exclude setting
+            await this.updateWorkspaceFilesExcludeSettingAsync(workspace, oldName, newName);
         } catch (error) {
             this.logError(`Error updating directory for workspace ${workspace.name}: ${error}`);
             throw error; // Propagate the error to be handled in the calling method
         }
+    }
+
+    private async updateWorkspaceFilesExcludeSettingAsync(workspace: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void> {
+        const config = vscode.workspace.getConfiguration('files', workspace.uri);
+        const exclude = config.get('exclude') as { [key: string]: boolean };
+
+        // Remove the old pattern
+        if (exclude[`**/${oldName}`]) {
+            delete exclude[`**/${oldName}`];
+        }
+
+        // Add the new pattern
+        exclude[`**/${newName}`] = true;
+
+        // Update the configuration
+        await config.update('exclude', exclude, vscode.ConfigurationTarget.Workspace);
+        this.logMessage(`Updated files.exclude setting for workspace ${workspace.name}`);
     }
     
     isRootWorkspace(workspace: vscode.WorkspaceFolder): boolean {
@@ -132,6 +152,10 @@ export class ExtensionStorageFolderManager extends BaseManager {
         }
         
         await this.initializeWorkspaceFiles(workspace, storageFolderUri);
+
+        // Hide the storage folder
+        const storageFolderName = this.configManager.getExtensionStorageFolderName(workspace);
+        await this.updateWorkspaceFilesExcludeSettingAsync(workspace, '', storageFolderName);
     }
 
     async refreshStorageFoldersAsync(): Promise<void> {

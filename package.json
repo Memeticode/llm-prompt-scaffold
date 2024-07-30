@@ -67,24 +67,23 @@
         {
           "id": "project-sidebar",
           "title": "LLM Prompt Scaffold",
-          "icon": "media/icon.png",
-          "when": "workbenchState == workspace && promptScaffoldEnabled"
+          "icon": "media/icon.png"
         }
       ]
     },
     "views": {
       "project-sidebar": [
         {
-          "id": "sidebar-project-info",
-          "name": "Project Context",
+          "id": "promptConfigurationView",
+          "name": "Prompt Configuration",
           "type": "tree",
           "description": "Provides context information for your prompt files."
         },
         {
-          "id": "sidebar-out-files",
-          "name": "Prompt Files",
+          "id": "fileStructureContextView",
+          "name": "File Structure Context",
           "type": "tree",
-          "description": "Files generated for your prompt. You can use prompt.txt, or inspect the individual files."
+          "description": "Displays files which will be included in file structure context."
         }
       ]
     },
@@ -92,6 +91,16 @@
       {
         "command": "promptScaffold.initializeWorkspaceStorageFolders",
         "title": "Initialize/Refresh Prompt Scaffold Workspace Storage Folders"
+      },
+      {
+        "command": "promptScaffold.refreshPromptConfiguration",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "promptScaffold.refreshFileStructureContext",
+        "title": "Refresh File Structure Context",
+        "icon": "$(refresh)"
       },
       {
         "command": "promptScaffold.openProjectInfoFile",
@@ -129,6 +138,16 @@
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "promptScaffold.refreshPromptConfiguration",
+          "when": "view == promptConfigurationView",
+          "group": "navigation"
+        },
+        {
+          "command": "promptScaffold.refreshFileStructureContext",
+          "when": "view == fileStructureContextView",
+          "group": "navigation"
+        },
         {
           "command": "promptScaffold.generatePromptOutFiles",
           "when": "view == sidebar-out-files",

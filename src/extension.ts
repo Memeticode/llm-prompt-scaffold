@@ -2,8 +2,11 @@ import * as vscode from 'vscode';
 import { ConfigurationManager } from './managers/configurationManager';
 import { FileSystemManager } from './managers/fileSystemManager';
 import { ExtensionStorageFolderManager } from './managers/extensionStorageFolderManager';
+import { FileContextManager } from './managers/fileContextManager';
 
-// import { ProjectInfoProvider } from './ui/projectInfoProvider';
+
+import { PromptConfigurationProvider } from './ui/promptConfigurationProvider';
+import { FileStructureContextProvider } from './ui/fileStructureContextProvider';
 // import { PromptOutTreeProvider } from './ui/promptOutTreeProvider';
 // import { PROJECT_INFO_ITEMS } from './config/projectInfoSidebarItems';
 
@@ -27,6 +30,10 @@ export async function activate(context: vscode.ExtensionContext) {
     const extensionStorageFolderManager = new ExtensionStorageFolderManager("ExtensionStorageFolderManager", outputChannel, configManager, fileSystemManager);
     outputChannel.appendLine('Initialized ExtensionStorageFolderManager...');
     
+    const fileContextManager = new FileContextManager("FileContextManager", outputChannel, configManager, fileSystemManager);
+    outputChannel.appendLine('Initialized FileContextManager...');
+    
+
     // Register manager delegates
     configManager.setStorageFolderNameChangeDelegate(
         extensionStorageFolderManager.handleStorageFolderNameConfigurationChangeAsync.bind(extensionStorageFolderManager)
@@ -68,6 +75,25 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
+
+    // SIDEBAR
+
+    // Register prompt configuration provider and commands
+    const promptConfigProvider = new PromptConfigurationProvider(configManager, fileSystemManager);
+    vscode.window.registerTreeDataProvider('promptConfigurationView', promptConfigProvider);
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('promptScaffold.refreshPromptConfiguration', () => promptConfigProvider.refresh())
+    );
+
+    // Register file structure context provider 
+    const fileStructureContextProvider = new FileStructureContextProvider("FileContextManager", outputChannel, fileContextManager);
+    vscode.window.registerTreeDataProvider('fileStructureContextView', fileStructureContextProvider);
+    context.subscriptions.push(
+        vscode.commands.registerCommand('promptScaffold.refreshFileStructureContext', () => fileStructureContextProvider.refresh())
+    );
+
+
 
     outputChannel.appendLine('Prompt Scaffold extension activated successfully.');
 }

@@ -4,43 +4,43 @@
 // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 
 // SPECIFIC WORKSPACE
-// {
-// 	"version": "0.2.0",
-// 	"configurations": [
-// 	  {
-// 		"name": "Extension with Specific Workspace",
-// 		"type": "extensionHost",
-// 		"request": "launch",
-// 		"args": [
-// 		  "--extensionDevelopmentPath=${workspaceFolder}",
-// 		  "/path/to/your/workspace"
-// 		],
-// 		"outFiles": [
-// 		  "${workspaceFolder}/out/**/*.js"
-// 		],
-// 		"preLaunchTask": "${defaultBuildTask}"
-// 	  }
-// 	]
-// }
-
-
-// NEW CLEAN WORKSPACE
 {
 	"version": "0.2.0",
 	"configurations": [
-		{
-			"name": "Run Extension in Clean Workspace",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-			  "--extensionDevelopmentPath=${workspaceFolder}",
-			  "--disable-extensions",
-			  "${workspaceFolder}/test-workspace"
-			],
-			"outFiles": [
-				"${workspaceFolder}/dist/**/*.js"
-			],
-			"preLaunchTask": "${defaultBuildTask}"
-		}
+	  {
+		"name": "Extension with Specific Workspace",
+		"type": "extensionHost",
+		"request": "launch",
+		"args": [
+		  "--extensionDevelopmentPath=${workspaceFolder}",
+		  "C:\\Users\\thatc\\ProjectsPractice\\rust101"
+		],
+		"outFiles": [
+		  "${workspaceFolder}/dist/**/*.js"
+		],
+		"preLaunchTask": "${defaultBuildTask}"
+	  }
 	]
 }
+
+
+// // NEW CLEAN WORKSPACE
+// {
+// 	"version": "0.2.0",
+// 	"configurations": [
+// 		{
+// 			"name": "Run Extension in Clean Workspace",
+// 			"type": "extensionHost",
+// 			"request": "launch",
+// 			"args": [
+// 			  "--extensionDevelopmentPath=${workspaceFolder}",
+// 			  "--disable-extensions",
+// 			  "${workspaceFolder}/test-workspace"
+// 			],
+// 			"outFiles": [
+// 				"${workspaceFolder}/dist/**/*.js"
+// 			],
+// 			"preLaunchTask": "${defaultBuildTask}"
+// 		}
+// 	]
+// }
