@@ -4,7 +4,7 @@ import { FileSystemUtils } from './fileSystemUtils';
 
 export const EXTENSION_STORAGE = {
     EXTENSION_ID: "abcdevco.llm-prompt-scaffold",
-    CONFIG_KEY: 'llmPromptScaffold.extensionStorageDirectory',
+    CONFIG_KEY: 'extensionStorageDirectory',
     STORAGE_FOLDER_NAME_FALLBACK: '.llm-prompt-scaffold',
     STRUCTURE: {
         PROJECT_INFO_DIR: {
@@ -37,15 +37,44 @@ export const EXTENSION_STORAGE = {
 
 
 export class ExtensionUtils {
+    private static outputChannel: vscode.OutputChannel;
+
+    static initialize(outputChannel: vscode.OutputChannel) {
+        this.outputChannel = outputChannel;
+    }
+
+    private static log(message: string) {
+        this.outputChannel?.appendLine(message);
+    }
     
     static getExtensionStorageFolderName(workspaceFolder: vscode.WorkspaceFolder): string {
         const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspaceFolder.uri);
-        return config.get<string>(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
+        const inspectedConfig = config.inspect<string>(EXTENSION_STORAGE.CONFIG_KEY);
+    
+        this.log(`Extension storage folder name for ${workspaceFolder.name}:`);
+        this.log(`Full config: ${JSON.stringify(config, null, 2)}`);
+        this.log(`Inspected config: ${JSON.stringify(inspectedConfig, null, 2)}`);
+        this.log(`  Default value: ${inspectedConfig?.defaultValue}`);
+        this.log(`  Global value: ${inspectedConfig?.globalValue}`);
+        this.log(`  Workspace value: ${inspectedConfig?.workspaceValue}`);
+        this.log(`  Workspace folder value: ${inspectedConfig?.workspaceFolderValue}`);
+    
+        const effectiveValue = inspectedConfig?.workspaceFolderValue ??
+                               inspectedConfig?.workspaceValue ??
+                               inspectedConfig?.globalValue ??
+                               inspectedConfig?.defaultValue ??
+                               EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK;
+    
+        this.log(`  Effective value: ${effectiveValue}`);
+    
+        return effectiveValue;
     }
-
+    
     static getExtensionStorageFolderUri(workspaceFolder: vscode.WorkspaceFolder): vscode.Uri {
         const storageFolderName = this.getExtensionStorageFolderName(workspaceFolder);
-        return vscode.Uri.joinPath(workspaceFolder.uri, storageFolderName);
+        const uri = vscode.Uri.joinPath(workspaceFolder.uri, storageFolderName);
+        this.log(`Extension storage folder URI for ${workspaceFolder.name}: ${uri.fsPath}`);
+        return uri;
     }
     
 

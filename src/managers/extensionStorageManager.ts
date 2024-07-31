@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { BaseManager } from './baseManager';
+import { WorkspaceConfigCacheType } from './extensionConfigurationManager';
 import { FileSystemUtils } from '../utils/fileSystemUtils';
 import { VscodeWorkspaceUtils } from '../utils/vscodeWorkspaceUtils';
 import { EXTENSION_STORAGE, ExtensionUtils } from '../utils/extensionUtils';
@@ -12,62 +13,228 @@ export class ExtensionStorageManager extends BaseManager {
         super(logName, outputChannel);
     }
 
-    async initializeStorageFolderAsync(workspace: vscode.WorkspaceFolder): Promise<void> {
-        const isRoot = VscodeWorkspaceUtils.isRootWorkspaceFolder(workspace);
-        this.logMessage(`Initializing ${isRoot ? 'root' : ''} workspace storage folder for ${workspace.name}`);
-        
-        const storageFolderUri = ExtensionUtils.getExtensionStorageFolderUri(workspace);
-        await FileSystemUtils.createDirectoryIfNotExistsAsync(storageFolderUri);
-        
-        if (isRoot) {
-            await FileSystemUtils.createDirectoryIfNotExistsAsync(vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME));
-            await FileSystemUtils.createDirectoryIfNotExistsAsync(vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME));
-            await this.initializeProjectInfoFiles(storageFolderUri);
-        }
-        
-        await FileSystemUtils.createDirectoryIfNotExistsAsync(vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME));
-        await this.initializeWorkspaceFiles(workspace, storageFolderUri);
+    // creates extension storage folders and files in all workspace folders
+    // async initializeExtensionStorageAsync(lastKnownWorkspaceConfigValues: Record<string, WorkspaceConfigCacheType>): Promise<void> {
+    //     this.logMessage('Initializing extension storage for workspace');
+    //     try
+    //     {
+    //         // get unique workspace id from workspace code folder
+    //         const workspaceId = vscode.workspace.workspaceFile?.fsPath || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+    //         if (!workspaceId) {
+    //             this.outputChannel.appendLine('No valid workspace found. Unable to initialize workspace storage files. Exiting initialization.');
+    //             return;
+    //         }
 
-        // Hide the storage folder
-        const storageFolderName = ExtensionUtils.getExtensionStorageFolderName(workspace);
-        await this.updateWorkspaceFolderVscodeExcludeSettingAsync(workspace, '', storageFolderName);
-    }
-    
-    async initializeStorageFoldersAsync(): Promise<void> {
-        this.logMessage('Initializing storage folders for all workspace folders');
-        try
-        {
-            // get unique workspace id from workspace code folder
+    //         const workspaces = await VscodeWorkspaceUtils.getAllWorkspaceFoldersAsync();
+    //         for (const workspace of workspaces) {
+    //             await this.initializeExtensionStorageForWorkspaceFolderAsync(workspace);
+    //         }
+    //         await this.validateStorageFoldersAsync();            
+    //     }
+    //     catch (error) {
+    //         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    //         this.logError(errorMessage);
+    //         vscode.window.showErrorMessage(`Error occured when initializing extension storage folders: ${errorMessage}`);
+    //     }
+    // }
+
+    async initializeExtensionStorageAsync(lastKnownWorkspaceConfigValues: Record<string, WorkspaceConfigCacheType>): Promise<void> {
+        this.logMessage('Initializing extension storage for workspace');
+        try {
             const workspaceId = vscode.workspace.workspaceFile?.fsPath || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
             if (!workspaceId) {
                 this.outputChannel.appendLine('No valid workspace found. Unable to initialize workspace storage files. Exiting initialization.');
                 return;
             }
-
+    
             const workspaces = await VscodeWorkspaceUtils.getAllWorkspaceFoldersAsync();
             for (const workspace of workspaces) {
-                await this.initializeStorageFolderAsync(workspace);
+                await this.initializeExtensionStorageForWorkspaceFolderAsync(workspace, lastKnownWorkspaceConfigValues[workspace.uri.toString()]);
             }
-        }
-        catch (error) {
+            await this.validateStorageFoldersAsync(); //lastKnownWorkspaceConfigValues);
+        } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
             this.logError(errorMessage);
-            vscode.window.showErrorMessage(`Failed to initialize extension storage folders: ${errorMessage}`);
-            //throw error;
-        }
-        finally {
-            await this.validateStorageFoldersAsync();
-            return;
+            vscode.window.showErrorMessage(`Error occurred when initializing extension storage folders: ${errorMessage}`);
         }
     }
 
-    async refreshStorageFoldersAsync(): Promise<void> {
-        this.logMessage('Refreshing storage folders for workspace');        
-        await this.clearExtensionStorageFilesAsync();
-        await this.initializeStorageFoldersAsync();
-        this.logMessage('Workspace storage folders refreshed');  
+    // creates extension storage folders and files in specific workspace folder
+    // async initializeExtensionStorageForWorkspaceFolderAsync(workspaceFolder: vscode.WorkspaceFolder): Promise<void> {
+
+    //     this.logMessage(`Initializing extension storage folders and files for workspace folder ${workspaceFolder.name}`);
+    //     try 
+    //     {
+    //         const storageFolderName = ExtensionUtils.getExtensionStorageFolderName(workspaceFolder);
+    //         const storageFolderUri = ExtensionUtils.getExtensionStorageFolderUri(workspaceFolder);
+    //         const isRoot = VscodeWorkspaceUtils.isRootWorkspaceFolder(workspaceFolder);
+            
+    //         // create initial storage folder if dne and hide in vscode
+    //         await FileSystemUtils.createDirectoryIfNotExistsAsync(storageFolderUri);        
+    //         await this.updateWorkspaceFolderVscodeExcludeSettingAsync(workspaceFolder, '', storageFolderName);
+    
+    //         // create workspace info sub dir (all workspace folders)
+    //         await this.initializeWorkspaceFolderStorageAsync(storageFolderUri);
+            
+    //         // create workspace info sub dir (root workspace folder only)
+    //         if (isRoot) { await this.initializeRootWorkspaceFolderStorageAsync(storageFolderUri); }
+        
+    //         this.logMessage(`Successfully initialized extension storage folders and files for workspace folder ${workspaceFolder.name}`);
+    //     }
+    //     catch (error)
+    //     {
+    //         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    //         this.logError(errorMessage);
+    //         vscode.window.showErrorMessage(`Error occurred when initializing extension storage folders and files for workspace folder ${workspaceFolder.name}: ${errorMessage}`);
+    //         throw error;
+    //     }   
+    // }
+
+    async initializeExtensionStorageForWorkspaceFolderAsync(workspaceFolder: vscode.WorkspaceFolder, lastKnownConfig?: WorkspaceConfigCacheType): Promise<void> {
+        this.logMessage(`Initializing extension storage folders and files for workspace folder ${workspaceFolder.name}`);
+        try {
+            const storageFolderName = lastKnownConfig?.storageDirName || ExtensionUtils.getExtensionStorageFolderName(workspaceFolder);
+            const storageFolderUri = vscode.Uri.joinPath(workspaceFolder.uri, storageFolderName);
+            const isRoot = lastKnownConfig?.isRoot ?? VscodeWorkspaceUtils.isRootWorkspaceFolder(workspaceFolder);
+            
+            await FileSystemUtils.createDirectoryIfNotExistsAsync(storageFolderUri);        
+            await this.updateWorkspaceFolderVscodeExcludeSettingAsync(workspaceFolder, '', storageFolderName);
+    
+            await this.initializeWorkspaceFolderStorageAsync(storageFolderUri);
+            
+            if (isRoot) { await this.initializeRootWorkspaceFolderStorageAsync(storageFolderUri); }
+        
+            this.logMessage(`Successfully initialized extension storage folders and files for workspace folder ${workspaceFolder.name}`);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            this.logError(errorMessage);
+            vscode.window.showErrorMessage(`Error occurred when initializing extension storage folders and files for workspace folder ${workspaceFolder.name}: ${errorMessage}`);
+            throw error;
+        }
+    }
+
+    // creates workspace-specific extension storage folders and files in workspace folder extension storage
+    private async initializeWorkspaceFolderStorageAsync(storageFolderUri: vscode.Uri): Promise<void> {
+        this.logMessage(`Initializing workspace storage in: ${storageFolderUri.fsPath}`);
+
+        // create workspace info dir if dne
+        await FileSystemUtils.createDirectoryIfNotExistsAsync(vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME));
+
+        // create workspace info dir files if dne (and load default content)
+        const workspaceInfoUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME);        
+        for (const [fileKey, fileName] of Object.entries(EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES)) {
+            const fileUri = vscode.Uri.joinPath(workspaceInfoUri, fileName);
+            if (!(await FileSystemUtils.fileExistsAsync(fileUri)))
+            {
+                const defaultContent = await ExtensionUtils.getExtensionStorageFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES);
+                await FileSystemUtils.writeFileAsync(fileUri, defaultContent);     
+            }
+        }
+    }
+
+    // creates root workspace-specific extension storage folders and files in workspace folder extension storage
+    private async initializeRootWorkspaceFolderStorageAsync(storageFolderUri: vscode.Uri): Promise<void> {
+        this.logMessage(`Initializing root-only workspace storage in: ${storageFolderUri.fsPath}`);
+
+        // create project info and prompt out storage folders if dne
+        const projectInfoDir = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.NAME);
+        await FileSystemUtils.createDirectoryIfNotExistsAsync(projectInfoDir);
+        this.logMessage(`Initialized root-only workspace storage folder: ${projectInfoDir.fsPath}`);
+
+        const promptOutDir = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME);
+        await FileSystemUtils.createDirectoryIfNotExistsAsync(promptOutDir);
+        //this.logMessage(`Initialized root-only workspace storage folder: ${promptOutDir.fsPath}`);
+        
+        // create files in project info dir if dne
+        for (const [fileKey, fileName] of Object.entries(EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES)) {
+            const fileUri = vscode.Uri.joinPath(projectInfoDir, fileName);
+            if (!(await FileSystemUtils.fileExistsAsync(fileUri)))
+            {
+                const defaultContent = await ExtensionUtils.getExtensionStorageFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES);
+                await FileSystemUtils.writeFileAsync(fileUri, defaultContent); 
+                //this.logMessage(`Initialized root-only workspace storage file: ${fileUri.fsPath}`);
+            }
+            else {
+                //this.logMessage(`Root-only workspace storage file already exists: ${fileUri.fsPath}`);
+            }
+        }
+    }
+
+
+    async deleteExtensionStorageAsync(): Promise<void>
+    {
+        this.logMessage(`Deleting existing extension workspace storage folders`);
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (workspaceFolders)
+        {
+            for (const workspaceFolder of workspaceFolders) 
+            {
+                await this.deleteExtensionStorageForWorkspaceFolderAsync(workspaceFolder);
+            }    
+        }
+        else 
+        {
+            this.logMessage(`No workspace folders found`);
+        }
+    }
+
+    async deleteExtensionStorageForWorkspaceFolderAsync(workspaceFolder: vscode.WorkspaceFolder): Promise<void>
+    {
+        const uri = ExtensionUtils.getExtensionStorageFolderUri(workspaceFolder);
+        if (await FileSystemUtils.directoryExistsAsync(uri))
+        {
+            this.logMessage(`Deleting extension workspace ${workspaceFolder.name} storage folder: ${uri.fsPath}`);
+            await FileSystemUtils.deleteDirectoryAsync(uri, { recursive: true, useTrash: false });
+            await this.removeWorkspaceFolderVscodeExcludeSettingAsync(workspaceFolder);
+        }
     }
     
+    async deleteRootWorkspaceExtensionStorageForWorkspaceFolderAsync(workspaceFolder: vscode.WorkspaceFolder): Promise<void>
+    {
+        const storageFolderUri = ExtensionUtils.getExtensionStorageFolderUri(workspaceFolder);
+        this.logMessage(`Clearing root-specific extension storage folders for workspace ${workspaceFolder.name}`);    
+
+        const outDirUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME);
+        if (await FileSystemUtils.directoryExistsAsync(outDirUri)) {
+            await FileSystemUtils.deleteDirectoryAsync(outDirUri, { recursive: true, useTrash: false });
+        }
+    
+        const projectInfoDirUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.NAME);
+        if (await FileSystemUtils.directoryExistsAsync(projectInfoDirUri)) {
+            await FileSystemUtils.deleteDirectoryAsync(outDirUri, { recursive: true, useTrash: false });
+        }
+    }
+
+
+    // async refreshExtensionStorageAsync(): Promise<void> {
+    //     this.logMessage('Refreshing storage folders for workspace');        
+    //     try {
+    //         await this.deleteExtensionStorageAsync();
+    //         await this.initializeExtensionStorageAsync();    
+    //     }
+    //     catch (error) {
+    //         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    //         this.logError(errorMessage);
+    //         vscode.window.showErrorMessage(`Error occured when refreshing extension storage folders: ${errorMessage}`);
+    //     }
+    // }
+
+    async refreshExtensionStorageAsync(lastKnownWorkspaceConfigValues: Record<string, WorkspaceConfigCacheType>): Promise<void> {
+        this.logMessage('Refreshing storage folders for workspace');        
+        try {
+            await this.deleteExtensionStorageAsync();
+            await this.initializeExtensionStorageAsync(lastKnownWorkspaceConfigValues);    
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            this.logError(errorMessage);
+            vscode.window.showErrorMessage(`Error occurred when refreshing extension storage folders: ${errorMessage}`);
+        }
+    }
+    
+
+    // confirm that all extension storage folders and files are present in all workspace folders
+    // confirm that root-specific storage folders only present in root workspace folder
+    // alert user and give option to reload extension storage if there is an error
     async validateStorageFoldersAsync(): Promise<void> {
         this.logMessage('Validating storage folders for all workspaces');
         const workspaces = await VscodeWorkspaceUtils.getAllWorkspaceFoldersAsync();
@@ -96,7 +263,7 @@ export class ExtensionStorageManager extends BaseManager {
                     this.logMessage(message);
                     const action = await vscode.window.showWarningMessage(message, 'Initialize', 'Ignore');
                     if (action === 'Initialize') {
-                        await this.initializeStorageFolderAsync(workspace);
+                        await this.initializeExtensionStorageForWorkspaceFolderAsync(workspace);
                     }
                 }
             } else {
@@ -106,7 +273,7 @@ export class ExtensionStorageManager extends BaseManager {
                     this.logMessage(message);
                     const action = await vscode.window.showWarningMessage(message, 'Initialize', 'Ignore');
                     if (action === 'Initialize') {
-                        await this.initializeStorageFolderAsync(workspace);
+                        await this.initializeExtensionStorageForWorkspaceFolderAsync(workspace);
                     }
                 }
                 // and validate that it does not have the system info folders
@@ -118,163 +285,64 @@ export class ExtensionStorageManager extends BaseManager {
                     this.logMessage(message);
                     const action = await vscode.window.showWarningMessage(message, 'Delete', 'Ignore');
                     if (action === 'Delete') {
-                        await this.removeRootSpecificFoldersAsync(workspace, hasWorkspaceInfo, hasOut);
+                        await this.deleteRootWorkspaceExtensionStorageForWorkspaceFolderAsync(workspace);
                     }
                 }
             }
         }
     }
 
-    async handleStorageFolderNameConfigurationChangeAsync(workspace: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void> {
-        this.logMessage(`Handling storage folder name change for workspace ${workspace.name} from ${oldName} to ${newName}`);
-        const oldUri = vscode.Uri.joinPath(workspace.uri, oldName);
-        const newUri = vscode.Uri.joinPath(workspace.uri, newName);            
+    // update storage folder names in response to change
+    async handleStorageFolderNameConfigurationChangeAsync(workspaceFolder: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void> {
+        this.logMessage(`Handling storage folder name change for workspace ${workspaceFolder.name} from ${oldName} to ${newName}`);
+        const oldUri = vscode.Uri.joinPath(workspaceFolder.uri, oldName);
+        const newUri = vscode.Uri.joinPath(workspaceFolder.uri, newName);            
         try {
             if (await FileSystemUtils.directoryExistsAsync(oldUri)) {
                 this.logMessage(`Renaming directory from ${oldUri.fsPath} to ${newUri.fsPath}`);
                 await FileSystemUtils.moveDirectoryAsync(oldUri, newUri, { overwrite: false }); // error if renamed directory already exists
             } else {
-                this.logMessage(`Old directory doesn't exist for workspace ${workspace.name}. Creating new directory.`);
+                this.logMessage(`Old directory doesn't exist for workspace ${workspaceFolder.name}. Creating new directory.`);
                 await FileSystemUtils.createDirectoryIfNotExistsAsync(newUri);
             }
-            await this.updateWorkspaceFolderVscodeExcludeSettingAsync(workspace, oldName, newName);
+            await this.updateWorkspaceFolderVscodeExcludeSettingAsync(workspaceFolder, oldName, newName);
         } catch (error) {
-            this.logError(`Error updating directory for workspace ${workspace.name}: ${error}`);
+            this.logError(`Error updating directory for workspace ${workspaceFolder.name}: ${error}`);
             throw error;
         }
     }
 
-    async cleanupStorageFolderAsync(workspace: vscode.WorkspaceFolder): Promise<void> {
-        this.logMessage(`Cleaning up storage folder for workspace: ${workspace.name}`);
-        
-        const storageFolderUri = ExtensionUtils.getExtensionStorageFolderUri(workspace);
-        
-        try {
-            if (await FileSystemUtils.directoryExistsAsync(storageFolderUri)) {
-                await FileSystemUtils.deleteDirectoryAsync(storageFolderUri);
-                this.logMessage(`Successfully deleted storage folder for workspace: ${workspace.name}`);
-            } else {
-                this.logMessage(`Storage folder for workspace ${workspace.name} doesn't exist. No cleanup needed.`);
-            }
-            await this.removeWorkspaceFolderVscodeExcludeSettingAsync(workspace);
-        } catch (error) {
-            this.logError(`Error cleaning up storage folder for workspace ${workspace.name}: ${error}`);
-            throw error;
-        }
-    }
-
-    async migrateRootWorkspaceStorageFolderItems(oldRoot: vscode.WorkspaceFolder, newRoot: vscode.WorkspaceFolder): Promise<void> {
+    async handleRootWorkspaceFolderChangeAsync(oldRoot: vscode.WorkspaceFolder, newRoot: vscode.WorkspaceFolder): Promise<void> {
         this.logMessage(`Migrating root workspace storage folder items from ${oldRoot.name} to ${newRoot.name}`);
-        const oldStorageFolder = ExtensionUtils.getExtensionStorageFolderUri(oldRoot);
-        const newStorageFolder = ExtensionUtils.getExtensionStorageFolderUri(newRoot);
-    
-        for (const dir of [EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME, EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.NAME]) {
-            const oldPath = vscode.Uri.joinPath(oldStorageFolder, dir);
-            const newPath = vscode.Uri.joinPath(newStorageFolder, dir);
-    
-            if (await FileSystemUtils.directoryExistsAsync(oldPath)) {
-                try {
-                    await FileSystemUtils.moveDirectoryAsync(oldPath, newPath, { overwrite: true });
-                    this.logMessage(`Moved ${dir} folder from old root to new root workspace`);
-                } catch (error) {
-                    this.logError(`Failed to move ${dir} folder: ${error}`);
-                }
+        try {
+            const storageDirName = ExtensionUtils.getExtensionStorageFolderName(newRoot); 
+            const oldStorageDir = vscode.Uri.joinPath(oldRoot.uri, storageDirName);
+            const newStorageDir = vscode.Uri.joinPath(newRoot.uri, storageDirName);
+            const oldStorageDirExists = await FileSystemUtils.directoryExistsAsync(oldStorageDir);
+            const newStorageDirExists = await FileSystemUtils.directoryExistsAsync(newStorageDir);
+            if (!newStorageDirExists) {
+                await this.initializeExtensionStorageForWorkspaceFolderAsync(newRoot);
             }
+            if (oldStorageDirExists) {
+                for (const dir of [EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME, EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.NAME]) {
+                    const oldPath = vscode.Uri.joinPath(oldStorageDir, dir);
+                    const newPath = vscode.Uri.joinPath(newStorageDir, dir);      
+                    if (await FileSystemUtils.directoryExistsAsync(oldPath)) {
+                        await FileSystemUtils.moveDirectoryAsync(oldPath, newPath, { overwrite: true });
+                        this.logMessage(`Moved ${dir} folder from old root to new root workspace.`);
+                        
+                        // Delete the old directory after successful move
+                        // await FileSystemUtils.deleteDirectoryAsync(oldPath, { recursive: true, useTrash: false });
+                        // this.logMessage(`Deleted old ${dir} folder from previous root workspace.`);
+                    }
+                }
+                await this.initializeRootWorkspaceFolderStorageAsync(newStorageDir);
+            }
+        } catch (error) {
+            this.logError(`Failed to handle root workspace folder change: ${error}`);
+            throw error; // Re-throw the error to be handled by the caller
         }
     }
-
-    private async writeStorageFileIfNotExistsAsync(fileUri: vscode.Uri, defaultContent: string): Promise<void> {
-        if (!(await FileSystemUtils.fileExistsAsync(fileUri))) {
-            await FileSystemUtils.writeFileAsync(fileUri, defaultContent);
-        }
-    }
-
-    private async initializeProjectInfoFiles(storageFolderUri: vscode.Uri): Promise<void> {
-        this.logMessage(`Initializing project info files in ${storageFolderUri.fsPath}`);
-        const projectInfoUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.NAME);
-        
-        for (const [fileKey, fileName] of Object.entries(EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES)) {
-            const fileUri = vscode.Uri.joinPath(projectInfoUri, fileName);
-            const defaultContent = await ExtensionUtils.getExtensionStorageFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES);
-            
-            await this.writeStorageFileIfNotExistsAsync(fileUri, defaultContent);
-            
-            this.logMessage(`Initialized project info file: ${fileName}`);
-        }
-    }
-    
-    private async initializeWorkspaceFiles(workspace: vscode.WorkspaceFolder, storageFolderUri: vscode.Uri): Promise<void> {
-        this.logMessage(`Initializing workspace files for ${workspace.name}`);
-        const workspaceInfoUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME);
-        
-        for (const [fileKey, fileName] of Object.entries(EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES)) {
-            const fileUri = vscode.Uri.joinPath(workspaceInfoUri, fileName);
-            const defaultContent = await ExtensionUtils.getExtensionStorageFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES);
-            
-            await this.writeStorageFileIfNotExistsAsync(fileUri, defaultContent);
-            
-            this.logMessage(`Initialized workspace file: ${fileName}`);
-        }
-    }
-
-    private async updateWorkspaceFolderVscodeExcludeSettingAsync(workspace: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void> {
-        const config = vscode.workspace.getConfiguration('files', workspace.uri);
-        const exclude = config.get('exclude') as { [key: string]: boolean };
-
-        // Remove the old pattern
-        if (exclude[`**/${oldName}`]) {
-            delete exclude[`**/${oldName}`];
-        }
-
-        // Add the new pattern
-        exclude[`**/${newName}`] = true;
-
-        // Update the configuration
-        await config.update('exclude', exclude, vscode.ConfigurationTarget.Workspace);
-        this.logMessage(`Updated files.exclude setting for workspace ${workspace.name}`);
-    }
-
-
-    private async removeWorkspaceFolderVscodeExcludeSettingAsync(workspace: vscode.WorkspaceFolder): Promise<void> {
-        const config = vscode.workspace.getConfiguration('files', workspace.uri);
-        const exclude = config.get('exclude') as { [key: string]: boolean };
-        const storageFolderName = ExtensionUtils.getExtensionStorageFolderName(workspace);
-        
-        if (exclude[`**/${storageFolderName}`]) {
-            delete exclude[`**/${storageFolderName}`];
-            await config.update('exclude', exclude, vscode.ConfigurationTarget.WorkspaceFolder);
-            this.logMessage(`Removed ${storageFolderName} from files.exclude for workspace ${workspace.name}`);
-        }
-    }
-    
-    private async clearExtensionStorageFilesAsync()
-    {
-        this.logMessage(`Clearing existing workspace storage folders`);
-        const storageFolderUris = ExtensionUtils.getExtensionStorageFolderUrisMap();
-        for (const [workspace, uri] of storageFolderUris) {
-            this.logMessage(`Clearing existing storage in workspace folder: ${workspace.name}, Storage Folder URI: ${uri.fsPath}`);
-            await FileSystemUtils.deleteDirectoryAsync(uri, { recursive: true, useTrash: false });
-        }
-    }
-    
-
-
-    private async removeRootSpecificFoldersAsync(workspace: vscode.WorkspaceFolder, deleteWorkspaceInfo: boolean, deleteOut: boolean): Promise<void> {
-        const storageFolderUri = ExtensionUtils.getExtensionStorageFolderUri(workspace);
-        this.logMessage(`Clearing existing workspace storage folders`);    
-        if (deleteWorkspaceInfo) {
-            const workspaceInfoUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME);
-            await FileSystemUtils.deleteDirectoryAsync(workspaceInfoUri);
-            this.logMessage(`Deleted WORKSPACE_INFO folder in workspace: ${workspace.name}`);
-        }
-    
-        if (deleteOut) {
-            const outUri = vscode.Uri.joinPath(storageFolderUri, EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME);
-            await FileSystemUtils.deleteDirectoryAsync(outUri);
-            this.logMessage(`Deleted OUT folder in workspace: ${workspace.name}`);
-        }
-    }
-    
     
     // async refreshStorageFolderAsync(workspace: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void> {
     //     const oldUri = vscode.Uri.joinPath(workspace.uri, oldName);
@@ -298,9 +366,41 @@ export class ExtensionStorageManager extends BaseManager {
     //         await FileSystemUtils.createDirectoryIfNotExistsAsync(newUri);
     //         await this.initializeStorageFolderAsync(workspace);
     //     }
-
     //     await this.validateStorageFoldersAsync();
-    //}
+    // }
+    
+    
+
+    // .vscode settings management (add/remove storage folders from vscode file explorer exclusion)
+    private async updateWorkspaceFolderVscodeExcludeSettingAsync(workspace: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void> {
+        this.logMessage(`updateWorkspaceFolderVscodeExcludeSettingAsync invoked. workspace: ${workspace.name}, oldName: ${oldName}, newName: ${newName}`)
+        const config = vscode.workspace.getConfiguration('files', workspace.uri);
+        const exclude = config.get('exclude') as { [key: string]: boolean };
+
+        // Remove the old pattern
+        if (exclude[`**/${oldName}`]) {
+            delete exclude[`**/${oldName}`];
+        }
+
+        // Add the new pattern
+        exclude[`**/${newName}`] = true;
+
+        // Update the configuration
+        await config.update('exclude', exclude, vscode.ConfigurationTarget.Workspace);
+        this.logMessage(`Updated files.exclude setting for workspace ${workspace.name}`);
+    }
+
+    private async removeWorkspaceFolderVscodeExcludeSettingAsync(workspace: vscode.WorkspaceFolder): Promise<void> {
+        const config = vscode.workspace.getConfiguration('files', workspace.uri);
+        const exclude = config.get('exclude') as { [key: string]: boolean };
+        const storageFolderName = ExtensionUtils.getExtensionStorageFolderName(workspace);
+        
+        if (exclude[`**/${storageFolderName}`]) {
+            delete exclude[`**/${storageFolderName}`];
+            await config.update('exclude', exclude, vscode.ConfigurationTarget.WorkspaceFolder);
+            this.logMessage(`Removed ${storageFolderName} from files.exclude for workspace ${workspace.name}`);
+        }
+    }
 
 
 }

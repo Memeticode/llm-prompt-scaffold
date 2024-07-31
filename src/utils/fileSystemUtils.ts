@@ -149,8 +149,26 @@ export class FileSystemUtils {
             await vscode.workspace.fs.copy(source, target, options);
         }
     }
-
     static async moveDirectoryAsync(source: vscode.Uri, target: vscode.Uri, options?: { overwrite: boolean }): Promise<void> {
-        await vscode.workspace.fs.rename(source, target, options);
+        try {
+            await vscode.workspace.fs.rename(source, target, options);
+            
+            // Check if the source still exists after the move
+            try {
+                await vscode.workspace.fs.stat(source);
+                // If we get here, the source still exists
+                console.log(`Source directory still exists after move: ${source.fsPath}`);
+                
+                // Attempt to delete the source
+                await vscode.workspace.fs.delete(source, { recursive: true });
+                console.log(`Deleted source directory after move: ${source.fsPath}`);
+            } catch (statError) {
+                // If stat throws an error, the source doesn't exist, which is what we want
+                console.log(`Source directory successfully moved and no longer exists: ${source.fsPath}`);
+            }
+        } catch (error) {
+            console.error(`Error moving directory from ${source.fsPath} to ${target.fsPath}: ${error}`);
+            throw error;
+        }
     }
 }

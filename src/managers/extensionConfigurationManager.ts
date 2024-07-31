@@ -10,7 +10,13 @@ export type WorkspaceConfigCacheType = {
 };
 
 export class ExtensionConfigurationManager extends BaseManager {
-    private eventEmitter = new EventEmitter();
+    private eventEmitter = new vscode.EventEmitter<{
+        workspace: vscode.WorkspaceFolder;
+        key: keyof WorkspaceConfigCacheType;
+        oldValue: any;
+        newValue: any;
+    }>();
+    readonly onDidChangeWorkspaceConfigCache = this.eventEmitter.event;
     private static readonly LAST_KNOWN_VALUES_KEY = 'lastKnownValues';
 
     constructor(
@@ -26,7 +32,7 @@ export class ExtensionConfigurationManager extends BaseManager {
         try 
         {
             const workspaces = vscode.workspace.workspaceFolders || [];
-            const lastKnownValues = this.getLastKnownValues();
+            const lastKnownValues = this.getLastKnownWorkspaceConfigValues();
             for (const workspace of workspaces) {
                 const key = workspace.uri.toString();
                 if (!lastKnownValues[key]) {
@@ -48,10 +54,10 @@ export class ExtensionConfigurationManager extends BaseManager {
 
     }
 
-    onWorkspaceConfigCacheValueChanged(listener: (workspace: vscode.WorkspaceFolder, key: keyof WorkspaceConfigCacheType, oldValue: any, newValue: any) => void): void {
-        this.eventEmitter.on('workspaceConfigCacheValueChanged', listener);
+    private fireWorkspaceConfigCacheChanged(workspace: vscode.WorkspaceFolder, key: keyof WorkspaceConfigCacheType, oldValue: any, newValue: any): void {
+        this.eventEmitter.fire({ workspace, key, oldValue, newValue });
     }
-
+    
     getStorageDirectoryForWorkspace(workspace: vscode.WorkspaceFolder): string {
         const config = vscode.workspace.getConfiguration('promptScaffold', workspace.uri);
         return config.get<string>(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
@@ -62,20 +68,27 @@ export class ExtensionConfigurationManager extends BaseManager {
     }
 
     async updateStorageDirectoryAsync(workspace: vscode.WorkspaceFolder, newValue: string): Promise<void> {
-        const oldValue = this.getStorageDirectoryForWorkspace(workspace);
+        const oldValue = this.getCachedStorageDirectory(workspace);
+        this.logMessage(`Updating storage directory for ${workspace.name}:`);
+        this.logMessage(`  Old value: ${oldValue}`);
+        this.logMessage(`  New value: ${newValue}`);
+        
         if (oldValue !== newValue) {
-            const config = vscode.workspace.getConfiguration('promptScaffold', workspace.uri);
-            await config.update(EXTENSION_STORAGE.CONFIG_KEY, newValue, vscode.ConfigurationTarget.WorkspaceFolder);
+            const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri);
+            await config.update('extensionStorageDirectory', newValue, vscode.ConfigurationTarget.WorkspaceFolder);
             this.updateCachedValue(workspace, 'storageDirName', newValue);
+            this.logMessage(`  Updated cached value to: ${newValue}`);
+        } else {
+            this.logMessage(`  No change in value, skipping update`);
         }
     }
 
-    getCachedStorageDirectory(workspace: vscode.WorkspaceFolder): string | undefined {
-        return this.getLastKnownValues()[workspace.uri.toString()]?.storageDirName;
+    getCachedStorageDirectory(workspace: vscode.WorkspaceFolder): string {
+        return this.getLastKnownWorkspaceConfigValues()[workspace.uri.toString()]?.storageDirName || EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK;
     }
 
     getCachedRootWorkspace(): vscode.WorkspaceFolder | undefined {
-        const lastKnownValues = this.getLastKnownValues();
+        const lastKnownValues = this.getLastKnownWorkspaceConfigValues();
         for (const [key, value] of Object.entries(lastKnownValues)) {
             if (value.isRoot) {
                 const workspaceFolder = vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === key);
@@ -85,59 +98,85 @@ export class ExtensionConfigurationManager extends BaseManager {
         return undefined;
     }
 
-    updateCachedRootWorkspace(newRootWorkspace: vscode.WorkspaceFolder): void {
-        const lastKnownValues = this.getLastKnownValues();
-        for (const [key, value] of Object.entries(lastKnownValues)) {
-            value.isRoot = key === newRootWorkspace.uri.toString();
-        }
-        this.setCachedValues(lastKnownValues);
+    updateDefaultStorageDirectory(newValue: string | undefined): void {
+        // This method updates the default value used for new workspaces
+        // You might store this in the extension's global state
+        this.context.globalState.update('defaultStorageDirectory', newValue);
     }
 
-    private getLastKnownValues(): Record<string, WorkspaceConfigCacheType> {
-        return this.context.globalState.get<Record<string, WorkspaceConfigCacheType>>(
+    updateCachedRootWorkspace(newRootWorkspace: vscode.WorkspaceFolder): void {
+        this.logMessage(`Updating cached root workspace to: ${newRootWorkspace.name}`);
+        const lastKnownValues = this.getLastKnownWorkspaceConfigValues();
+        for (const [key, value] of Object.entries(lastKnownValues)) {
+            const isNewRoot = key === newRootWorkspace.uri.toString();
+            this.logMessage(`Workspace ${key}: isRoot changed from ${value.isRoot} to ${isNewRoot}`);
+            value.isRoot = isNewRoot;
+        }
+        this.setCachedValues(lastKnownValues);
+        this.logMessage(`Cached root workspace updated`);
+    }
+
+    getLastKnownWorkspaceConfigValues(): Record<string, WorkspaceConfigCacheType> {
+        const values = this.context.globalState.get<Record<string, WorkspaceConfigCacheType>>(
             ExtensionConfigurationManager.LAST_KNOWN_VALUES_KEY,
             {}
         );
+        return JSON.parse(JSON.stringify(values)); // Create a deep copy
     }
-
+    
     private setCachedValues(newValues: Record<string, WorkspaceConfigCacheType>): void {
         this.logMessage(`Setting last known values:`);
+        
+        const updatedValues: Record<string, WorkspaceConfigCacheType> = {};
         
         for (const [workspaceKey, newValue] of Object.entries(newValues)) {
             const workspace = vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === workspaceKey);
             
             if (workspace) {
+                updatedValues[workspaceKey] = newValue;                
                 for (const key of Object.keys(newValue) as Array<keyof WorkspaceConfigCacheType>) {
                     this.updateCachedValue(workspace, key, newValue[key]);
                 }
             } else {
-                this.logMessage(`Warning: No matching workspace found for key ${workspaceKey}`);
+                this.logMessage(`Removing cached values for non-existent workspace: ${workspaceKey}`);
             }
         }
+
+        this.logMessage(`Summary of updated last known values:`);
+        for (const [workspaceKey, value] of Object.entries(updatedValues)) {
+            this.logMessage(`  Workspace Key: ${workspaceKey}:`);
+            this.logMessage(`    Storage Directory: ${value.storageDirName}`);
+            this.logMessage(`    Is Root: ${value.isRoot}`);
+        }
+    
+        // Update global state with cleaned-up values
+        this.context.globalState.update(ExtensionConfigurationManager.LAST_KNOWN_VALUES_KEY, updatedValues);
+        this.logMessage(`Global state updated with new last known values`);
     }
     
-    private updateCachedValue<K extends keyof WorkspaceConfigCacheType>(
+
+    updateCachedValue<K extends keyof WorkspaceConfigCacheType>(
         workspace: vscode.WorkspaceFolder,
         key: K,
         newValue: WorkspaceConfigCacheType[K]
     ): void {
-        const lastKnownValues = this.getLastKnownValues();
+        const lastKnownValues = this.getLastKnownWorkspaceConfigValues();
         const workspaceKey = workspace.uri.toString();
         
         if (!lastKnownValues[workspaceKey]) {
             lastKnownValues[workspaceKey] = { storageDirName: '', isRoot: false };
-            this.logMessage(`Initializing last known values for workspace: ${workspace.name}`);
         }
 
         const oldValue = lastKnownValues[workspaceKey][key];
         
         if (oldValue !== newValue) {
             lastKnownValues[workspaceKey][key] = newValue;
-            this.logMessage(`Updated last known value for workspace "${workspace.name}" - Key: ${key}, Old: ${oldValue}, New: ${newValue}`);            
-            this.eventEmitter.emit('workspaceConfigCacheValueChanged', workspace, key, oldValue, newValue);
+            this.logMessage(`Updated cached value for workspace "${workspace.name}" - Key: ${key}, Old: ${oldValue}, New: ${newValue}`);            
+            this.eventEmitter.fire({ workspace, key, oldValue, newValue });
         }
     
         // Update the global state
         this.context.globalState.update(ExtensionConfigurationManager.LAST_KNOWN_VALUES_KEY, lastKnownValues);
     }
+
 }
