@@ -1,0 +1,3 @@
+# write a description of your project here
+# detail and specifity are your friends
+# lines starting with '#' will not be included in the prompt

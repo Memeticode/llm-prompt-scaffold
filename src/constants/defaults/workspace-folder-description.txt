@@ -1,0 +1,2 @@
+# add a description of the specific project folder here (for multi-folder workspaces)
+# lines starting with '#' will not be included in the prompt

@@ -1,0 +1,2 @@
+# write your goals for the current development session here
+# lines starting with '#' will not be included in the prompt

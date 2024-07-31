@@ -1,9 +1,15 @@
 import * as vscode from 'vscode';
-import { ExtensionConfigurationManager } from './managers/extensionConfigurationManager';
+//import { ConfigurationManager } from './managers/configurationManager';
 import { ExtensionStorageManager } from './managers/extensionStorageManager';
-import { VscodeEventManager } from './managers/vscodeEventManager';
+//import { FileSystemManager } from './managers/fileSystemManager';
+//import { FileContextManager } from './managers/fileContextManager';
+
 
 import { PromptConfigurationProvider } from './ui/promptConfigurationProvider';
+//import { FileStructureContextProvider } from './ui/fileStructureContextProvider';
+// import { PromptOutTreeProvider } from './ui/promptOutTreeProvider';
+// import { PROJECT_INFO_ITEMS } from './config/projectInfoSidebarItems';
+
 
 let outputChannel: vscode.OutputChannel;
 
@@ -14,18 +20,17 @@ export async function activate(context: vscode.ExtensionContext) {
 
     outputChannel.appendLine('Prompt Scaffold extension is activating.');
 
-    outputChannel.appendLine('Initializing ExtensionConfigurationManager...');
-    const extensionConfigManager = new ExtensionConfigurationManager("ExtensionConfigurationManager", outputChannel, context);
-    extensionConfigManager.initializeWorkspaceConfigCache();
-
-    outputChannel.appendLine('Initializing ExtensionStorageManager...');
-    const extensionStorageManager = new ExtensionStorageManager("ExtensionStorageManager", outputChannel);
+    // Init managers
+    // const configManager = new ConfigurationManager("ConfigurationManager", outputChannel, context);  
+    // outputChannel.appendLine('Initialized ConfigurationManager...');
+    
+    // const fileSystemManager = new FileSystemManager("FileSystemManager", outputChannel, configManager);
+    // outputChannel.appendLine('Initialized FileSystemManager...');
+    
+    outputChannel.appendLine('Initialized ExtensionStorageFolderManager...');
+    const extensionStorageManager = new ExtensionStorageManager("ExtensionStorageFolderManager", outputChannel);
     await extensionStorageManager.initializeStorageFoldersAsync();
-
-    outputChannel.appendLine('Initializing VscodeEventManager...');
-    const vscodeEventManager = new VscodeEventManager("VscodeEventManager", outputChannel, extensionConfigManager, extensionStorageManager);
-    vscodeEventManager.initializeEventListeners();
-
+    
     //const fileContextManager = new FileContextManager("FileContextManager", outputChannel, configManager, fileSystemManager);
     //outputChannel.appendLine('Initialized FileContextManager...');
     
@@ -45,40 +50,41 @@ export async function activate(context: vscode.ExtensionContext) {
     //await ExtensionUtils.initializeWorkspaceStorageFoldersAsync(context, outputChannel, extensionStorageManager);
 
 
-    // // Listen for workspace folder changes
-    // context.subscriptions.push(
-    //     vscode.workspace.onDidChangeWorkspaceFolders(async (event) => {
+    // Listen for workspace folder changes
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeWorkspaceFolders(async (event) => {
 
-    //         // Log changes
-    //         outputChannel.appendLine('Workspace folders changed:');
-    //         for (const folder of event.added) { outputChannel.appendLine(`New workspace added: ${folder.name}`); }
-    //         for (const folder of event.removed) { outputChannel.appendLine(`Workspace removed: ${folder.name}`); }
+            // Log changes
+            outputChannel.appendLine('Workspace folders changed:');
+            for (const folder of event.added) { outputChannel.appendLine(`New workspace added: ${folder.name}`); }
+            for (const folder of event.removed) { outputChannel.appendLine(`Workspace removed: ${folder.name}`); }
 
-    //         // Reinitialize storage directories
-    //         //await ExtensionUtils.initializeWorkspaceStorageFoldersAsync(context, outputChannel, extensionStorageManager);
+            // Reinitialize storage directories
+            //await ExtensionUtils.initializeWorkspaceStorageFoldersAsync(context, outputChannel, extensionStorageManager);
 
-    //         outputChannel.appendLine('Storage directories reinitialized after workspace changes.');
-    //     })
-    // );
+            outputChannel.appendLine('Storage directories reinitialized after workspace changes.');
+        })
+    );
 
-    // // Command to manually trigger workspace initialization/refresh
-    // context.subscriptions.push(
-    //     vscode.commands.registerCommand('llmPromptScaffold.initializeWorkspaceStorageFolders', async () => {
-    //         if (vscode.workspace.workspaceFolders) {
-    //             await extensionStorageManager.initializeStorageFoldersAsync();
-    //         } else {
-    //             vscode.window.showWarningMessage('No workspaces found to initialize.');
-    //         }
-    //     })
-    // );
+    // Command to manually trigger workspace initialization/refresh
+    context.subscriptions.push(
+        vscode.commands.registerCommand('llmPromptScaffold.initializeWorkspaceStorageFolders', async () => {
+            if (vscode.workspace.workspaceFolders) {
+                await extensionStorageManager.initializeStorageFoldersAsync();
+            } else {
+                vscode.window.showWarningMessage('No workspaces found to initialize.');
+            }
+        })
+    );
 
     // SIDEBAR
 
     // Register prompt configuration provider and commands
     const promptConfigProvider = new PromptConfigurationProvider();
     vscode.window.registerTreeDataProvider('promptConfigurationView', promptConfigProvider);
+
     context.subscriptions.push(
-        vscode.commands.registerCommand('llmPromptScaffold.reloadPromptConfigurationContent', async () => await extensionStorageManager.refreshStorageFoldersAsync())
+        vscode.commands.registerCommand('llmPromptScaffold.refreshPromptConfiguration', () => promptConfigProvider.refresh())
     );
 
     // Register file structure context provider 

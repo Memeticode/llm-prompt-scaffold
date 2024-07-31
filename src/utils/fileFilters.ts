@@ -18,7 +18,6 @@ export class CompositeFileFilter implements FileFilter {
     }
 }
 
-
 export class GitignoreParser implements FileFilter {
     private ig: ReturnType<typeof ignore>;
 
@@ -73,17 +72,17 @@ export class IncludeExcludeGitignoreParser implements FileFilter {
 // static methods
 // these are for generating file filters for a given workspace
 // may return composite filters
-export class FileFilterFactory
-{
-    static async getWorkspaceFolderGitignoreFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
-        // implement
-    }
+// export class FileFilterFactory
+// {
+//     static async getWorkspaceFolderGitignoreFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
+//         // implement
+//     }
     
-    static async getWorkspaceFileContextStructureFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
-        // implement
-    }
+//     static async getWorkspaceFileContextStructureFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
+//         // implement
+//     }
     
-    static async getWorkspaceFileContextContentFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
-        // implement
-    }
-}
+//     static async getWorkspaceFileContextContentFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
+//         // implement
+//     }
+// }

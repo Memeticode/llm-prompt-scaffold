@@ -1,1 +1,0 @@
-# For multi-project workspaces, add a description of the specific project folder here (lines starting with '#' will not be included in the prompt). 

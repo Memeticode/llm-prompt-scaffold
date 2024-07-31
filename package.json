@@ -1,9 +1,9 @@
 {
-  "name": "propmt-scaffold",
-  "displayName": "Prompt Scaffold",
+  "name": "llm-prompt-scaffold",
+  "displayName": "LLM Prompt Scaffold",
   "description": "Generates project structure and aggregate code file from selected file context.",
   "version": "0.0.1",
-  "publisher": "Memeticode",
+  "publisher": "abcdevco",
   "repository": {
     "type": "git",
     "url": "https://github.com/Memeticode/llm-prompt-scaffold.git"
@@ -22,46 +22,96 @@
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Prompt Scaffold",
+      "title": "LLM Prompt Scaffold",
       "properties": {
-        "promptScaffold.extensionStorageDirectory": {
+        "llmPromptScaffold.extensionStorageDirectory": {
           "type": "string",
-          "default": ".prompt-scaffold",
-          "description": "The name of the directory used for storing extension data. One of these will be created in each workspace folder. It's not recommended to change this unless you have an unavoidable namespace conflict.",
+          "default": ".llm-prompt-scaffold",
+          "description": "The name of the directory used for storing extension data. You probably won't need to change this, but it may be necessary if you have an existing folder named '.llm-prompt-scaffold' in your project. The extension creates a folder with this name in each workspace folder. Changing this at the user level will cause new workspaces to use the new name by default, but will not change the folder in any existing workspaces. Changing this at the workspace level will update the storage folder names in the current workspace.",
           "scope": "window"
         },
-        "promptScaffold.systemPromptDefaultPath": {
+        "llmPromptScaffold.systemPromptDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default system prompt text. Will override existing default.",
+          "description": "(NOT IMPLEMENTED) To change the default system prompt, write your desired prompt in a text file and input the path here (will use existing default if left blank). If the extension can read the specified file, it will load that as the default prompt. If not, it will provide a warning message and use the default default system prompt. Refresh the prompt configuration to apply changes. Workspace-level settings will override user-level settings.",
           "scope": "window"
         },
-        "promptScaffold.fileStructureContextIncludeDefaultPath": {
+        "llmPromptScaffold.fileContextStructureIncludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file structure include rules. Will override existing default.",
+          "description": "(NOT IMPLEMENTED) To change the default file context structure inclusion rules, write the inclusion rules as a 'reverse .gitignore' file and input the path here (will use existing default if left blank). If the extension can read the specified file, it will load that as the default inclusion instruction. If not, it will provide a warning message and use the default default inclusion rules. Refresh the prompt configuration to apply changes. Workspace-level settings will override user-level settings.",
           "scope": "window"
         },
-        "promptScaffold.fileStructureContextExcludeDefaultPath": {
+        "llmPromptScaffold.fileContextStructureExcludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file structure exclude rules. Will override existing default.",
+          "description": "(NOT IMPLEMENTED) To change the default file context structure exclusion rules, write the exclusion rules as a '.gitignore' file and input the path here (will use existing default if left blank). If the extension can read the specified file, it will load that as the default inclusion instruction. If not, it will provide a warning message and use the extension default exclusion rules. Refresh the prompt configuration to apply changes. Workspace-level settings will override user-level settings.",
           "scope": "window"
         },
-        "promptScaffold.fileSystemContextIncludeDefaultPath": {
+        "llmPromptScaffold.fileContextContentIncludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file system include rules. Will override existing default.",
+          "description": "(NOT IMPLEMENTED) To change the default file context content inclusion rules, write the inclusion rules as a 'reverse .gitignore' file and input the path here (will use existing default if left blank). If the extension can read the specified file, it will load that as the default inclusion instruction. If not, it will provide a warning message and use the default content inclusion rules. Refresh the prompt configuration to apply changes. Workspace-level settings will override user-level settings.",
           "scope": "window"
         },
-        "promptScaffold.fileSystemContextExcludeDefaultPath": {
+        "llmPromptScaffold.fileContextContentExcludeDefaultPath": {
           "type": "string",
           "default": "",
-          "description": "File path for default file system exclude rules. Will override existing default.",
+          "description": "(NOT IMPLEMENTED) To change the default file context content exclusion rules, write the exclusion rules as a '.gitignore' file and input the path here (will use existing default if left blank). If the extension can read the specified file, it will load that as the default exclusion instruction. If not, it will provide a warning message and use the extension default content exclusion rules. Refresh the prompt configuration to apply changes. Workspace-level settings will override user-level settings.",
           "scope": "window"
         }
       }
     },
+    "commands": [
+      {
+        "command": "llmPromptScaffold.reloadPromptConfigurationContent",
+        "title": "LLM Prompt Scaffold: Reloads Prompt Configuration",
+        "description": "Reloads content in the 'Prompt Configuration' sidebar window (replaces any existing content with default content)",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "llmPromptScaffold.initializeWorkspaceStorageFolders",
+        "title": "Initialize/Refresh Prompt Scaffold Workspace Storage Folders"
+      },
+      {
+        "command": "llmPromptScaffold.refreshFileStructureContext",
+        "title": "Refresh File Structure Context",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "llmPromptScaffold.openProjectInfoFile",
+        "title": "Opens Project Info File in Editor"
+      },
+      {
+        "command": "llmPromptScaffold.generatePromptOutFiles",
+        "title": "Refresh Prompt Output Files",
+        "description": "(Re)generate all prompt output files",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "llmPromptScaffold.openPromptOutFile",
+        "title": "Open Prompt Output File",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "llmPromptScaffold.openPromptOutFolder",
+        "title": "Open System Folder",
+        "description": "Open the system folder containing prompt output files",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "llmPromptScaffold.currentFileContextExpandAll",
+        "title": "Expand All",
+        "description": "Fully expand the current file context",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "llmPromptScaffold.currentFileContextCollapseAll",
+        "title": "Collapse All",
+        "description": "Collapse the current file context",
+        "icon": "$(collapse-all)"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -76,8 +126,8 @@
         {
           "id": "promptConfigurationView",
           "name": "Prompt Configuration",
-          "type": "tree",
-          "description": "Provides context information for your prompt files."
+          "description": "View and edit prompt configuration information",
+          "type": "tree"
         },
         {
           "id": "fileStructureContextView",
@@ -87,88 +137,22 @@
         }
       ]
     },
-    "commands": [
-      {
-        "command": "promptScaffold.initializeWorkspaceStorageFolders",
-        "title": "Initialize/Refresh Prompt Scaffold Workspace Storage Folders"
-      },
-      {
-        "command": "promptScaffold.refreshPromptConfiguration",
-        "title": "Refresh",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "promptScaffold.refreshFileStructureContext",
-        "title": "Refresh File Structure Context",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "promptScaffold.openProjectInfoFile",
-        "title": "Opens Project Info File in Editor"
-      },
-      {
-        "command": "promptScaffold.generatePromptOutFiles",
-        "title": "Refresh Prompt Output Files",
-        "description": "(Re)generate all prompt output files",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "promptScaffold.openPromptOutFile",
-        "title": "Open Prompt Output File",
-        "icon": "$(folder-opened)"
-      },
-      {
-        "command": "promptScaffold.openPromptOutFolder",
-        "title": "Open System Folder",
-        "description": "Open the system folder containing prompt output files",
-        "icon": "$(folder-opened)"
-      },
-      {
-        "command": "promptScaffold.currentFileContextExpandAll",
-        "title": "Expand All",
-        "description": "Fully expand the current file context",
-        "icon": "$(expand-all)"
-      },
-      {
-        "command": "promptScaffold.currentFileContextCollapseAll",
-        "title": "Collapse All",
-        "description": "Collapse the current file context",
-        "icon": "$(collapse-all)"
-      }
-    ],
     "menus": {
       "view/title": [
         {
-          "command": "promptScaffold.refreshPromptConfiguration",
-          "when": "view == promptConfigurationView",
-          "group": "navigation"
-        },
-        {
-          "command": "promptScaffold.refreshFileStructureContext",
+          "command": "llmPromptScaffold.refreshFileStructureContext",
           "when": "view == fileStructureContextView",
           "group": "navigation"
         },
         {
-          "command": "promptScaffold.generatePromptOutFiles",
+          "command": "llmPromptScaffold.generatePromptOutFiles",
           "when": "view == sidebar-out-files",
           "group": "navigation"
         },
         {
-          "command": "promptScaffold.openPromptOutFolder",
+          "command": "llmPromptScaffold.openPromptOutFolder",
           "when": "view == sidebar-out-files",
           "group": "navigation"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "promptScaffold.currentFileContextExpandAll",
-          "when": "view == sidebar-project-info && viewItem =~ /.*hasButton:currentFileContextExpandAll.*/",
-          "group": "inline"
-        },
-        {
-          "command": "promptScaffold.currentFileContextCollapseAll",
-          "when": "view == sidebar-project-info && viewItem =~ /.*hasButton:currentFileContextCollapseAll.*/",
-          "group": "inline"
         }
       ]
     }

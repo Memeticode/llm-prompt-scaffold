@@ -1,2 +1,0 @@
-# Describe your project here (lines starting with '#' will not be included in the prompt). 
-# It may be helpful to enhance the description for the specific feature you are working on, depending on the complexity.
