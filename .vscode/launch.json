@@ -13,7 +13,8 @@
 		"request": "launch",
 		"args": [
 		  "--extensionDevelopmentPath=${workspaceFolder}",
-		  "C:\\Users\\thatc\\ProjectsPractice\\rust101"
+		  "--folder-uri=C:\\Users\\thatc\\ProjectsPractice\\rust101",
+		  "--folder-uri=C:\\Users\\thatc\\ProjectsPractice\\vscode_ext",
 		],
 		"outFiles": [
 		  "${workspaceFolder}/dist/**/*.js"

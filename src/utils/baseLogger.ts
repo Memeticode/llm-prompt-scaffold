@@ -1,8 +1,9 @@
 
 import * as vscode from 'vscode';
 
-export class BaseLogger {
+export class BaseLogable {
     constructor(
+        //readonly config: vscode.WorkspaceConfiguration,
         readonly logName: string,
         readonly outputChannel: vscode.OutputChannel
     ) { }

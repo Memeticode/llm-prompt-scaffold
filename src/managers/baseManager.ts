@@ -1,9 +1,10 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { BaseLogger } from '../utils/baseLogger';
+import { BaseLogable } from '../utils/baseLogger';
 
-export class BaseManager extends BaseLogger {
+export class BaseManager extends BaseLogable {
     constructor(
+        //config: vscode.WorkspaceConfiguration,
         logName: string,
         outputChannel: vscode.OutputChannel
     ) {
@@ -12,7 +13,6 @@ export class BaseManager extends BaseLogger {
 
     async isValidFilePathAsync(filePath: string): Promise<boolean> {
         //this.logMessage(`Invoked isValidFilePathAsync for path: ${filePath}`);
-        
         try {
             // Check if the path is absolute
             if (!path.isAbsolute(filePath)) {
@@ -41,6 +41,5 @@ export class BaseManager extends BaseLogger {
             return false;
         }
     }
-    
-    
+     
 }

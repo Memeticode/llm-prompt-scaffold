@@ -3,12 +3,12 @@ import { FileSystemUtils } from './fileSystemUtils';
 
 
 export const EXTENSION_STORAGE = {
-    EXTENSION_ID: "abcdevco.llm-prompt-scaffold",
+    EXTENSION_ID: "memeticode.llm-prompt-scaffold",
     CONFIG_KEY: 'extensionStorageDirectory',
     STORAGE_FOLDER_NAME_FALLBACK: '.llm-prompt-scaffold',
     STRUCTURE: {
-        PROJECT_INFO_DIR: {
-            NAME: 'project-info',
+        PROMPT_CONFIG_DIR: {
+            NAME: 'config',
             FILES: {
                 SYSTEM_PROMPT: 'project-system-prompt.txt',
                 PROJECT_DESCRIPTION: 'project-description.txt',
@@ -20,64 +20,46 @@ export const EXTENSION_STORAGE = {
             }
         },
         PROMPT_OUT_DIR: {
-            NAME: 'prompt-out'
-        },
-        WORKSPACE_FOLDER_INFO_DIR: {
-            NAME: 'workspace-folder-info',
+            NAME: 'out',
             FILES: {
-                WORKSPACE_FOLDER_DESCRIPTION: 'workspace-folder-description.txt',
-                WORKSPACE_FOLDER_CONTEXT_STRUCTURE_INCLUDE: 'workspace-folder-context-structure-include.gitignore',
-                WORKSPACE_FOLDER_CONTEXT_STRUCTURE_EXCLUDE: 'workspace-folder-context-structure-exclude.gitignore',
-                WORKSPACE_FOLDER_CONTEXT_CONTENT_INCLUDE: 'workspace-folder-context-content-include.gitignore',
-                WORKSPACE_FOLDER_CONTEXT_CONTENT_EXCLUDE: 'workspace-folder-context-content-exclude.gitignore',
+                SYSTEM_PROMPT: 'out-system-prompt.txt',
+                PROJECT_DESCRIPTION: 'out-project-description.txt',
+                PROJECT_GOALS: 'out-project-goals.txt',
+                FILE_CONTEXT_STRUCTURE: 'out-file-context-structure.txt',
+                FILE_CONTEXT_CONTENT: 'out-file-context-content.txt'
             }
-        },
+        }
     }
 };
 
 
 export class ExtensionUtils {
-    private static outputChannel: vscode.OutputChannel;
 
-    static initialize(outputChannel: vscode.OutputChannel) {
-        this.outputChannel = outputChannel;
-    }
-
-    private static log(message: string) {
-        this.outputChannel?.appendLine(message);
+    static getWorkspaceConfig(workspaceFolder: vscode.WorkspaceFolder): vscode.WorkspaceConfiguration
+    {
+        return vscode.workspace.getConfiguration('llmPromptScaffold', workspaceFolder.uri);
     }
     
-    static getExtensionStorageFolderName(workspaceFolder: vscode.WorkspaceFolder): string {
-        const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspaceFolder.uri);
-        const inspectedConfig = config.inspect<string>(EXTENSION_STORAGE.CONFIG_KEY);
-    
-        this.log(`Extension storage folder name for ${workspaceFolder.name}:`);
-        this.log(`Full config: ${JSON.stringify(config, null, 2)}`);
-        this.log(`Inspected config: ${JSON.stringify(inspectedConfig, null, 2)}`);
-        this.log(`  Default value: ${inspectedConfig?.defaultValue}`);
-        this.log(`  Global value: ${inspectedConfig?.globalValue}`);
-        this.log(`  Workspace value: ${inspectedConfig?.workspaceValue}`);
-        this.log(`  Workspace folder value: ${inspectedConfig?.workspaceFolderValue}`);
-    
+    static getExtensionStorageFolderName(workspaceFolder: vscode.WorkspaceFolder): string
+    {
+        const config = this.getWorkspaceConfig(workspaceFolder);
+        const inspectedConfig = config.inspect<string>(EXTENSION_STORAGE.CONFIG_KEY);        
         const effectiveValue = inspectedConfig?.workspaceFolderValue ??
-                               inspectedConfig?.workspaceValue ??
+                               // inspectedConfig?.workspaceValue ??    // don't support setting this at workspace value
                                inspectedConfig?.globalValue ??
                                inspectedConfig?.defaultValue ??
                                EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK;
-    
-        this.log(`  Effective value: ${effectiveValue}`);
-    
         return effectiveValue;
     }
     
-    static getExtensionStorageFolderUri(workspaceFolder: vscode.WorkspaceFolder): vscode.Uri {
+    static getExtensionStorageFolderUri(workspaceFolder: vscode.WorkspaceFolder): vscode.Uri 
+    {
         const storageFolderName = this.getExtensionStorageFolderName(workspaceFolder);
         const uri = vscode.Uri.joinPath(workspaceFolder.uri, storageFolderName);
-        this.log(`Extension storage folder URI for ${workspaceFolder.name}: ${uri.fsPath}`);
         return uri;
     }
     
-
+    // can be cleaned up/removed
     static getExtensionStorageFolderUrisMap(): Map<vscode.WorkspaceFolder, vscode.Uri> {
         const storageFolderUris = new Map<vscode.WorkspaceFolder, vscode.Uri>();        
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -90,17 +72,14 @@ export class ExtensionUtils {
         return storageFolderUris;
     }
 
-    static getExtensionStorageFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES | keyof typeof EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES): vscode.Uri {
+    static getExtensionStorageFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): vscode.Uri {
         const storageFolderUri = this.getExtensionStorageFolderUri(workspace);
         let fileName: string;
         let dirName: string;
 
-        if (fileType in EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES];
-            dirName = EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.NAME;
-        } else if (fileType in EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES];
-            dirName = EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.NAME;
+        if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES) {
+            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES];
+            dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
         } else {
             throw new Error(`Unable to get extension storage file item uri. Unknown file type: ${fileType}`);
         }
@@ -108,13 +87,12 @@ export class ExtensionUtils {
         return vscode.Uri.joinPath(storageFolderUri, dirName, fileName);
     }
 
-    static async getExtensionStorageFileDefaultContent(fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES | keyof typeof EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES): Promise<string> {
+    
+    static async getExtensionStorageFileDefaultContent(fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): Promise<string> {
         let fileName: string;
         
-        if (fileType in EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.WORKSPACE_FOLDER_INFO_DIR.FILES];
-        } else if (fileType in EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROJECT_INFO_DIR.FILES];
+        if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES) {
+            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES];
         } else {
             throw new Error(`Unable to get extension storage file default content. Unknown file type: ${fileType}`);
         }

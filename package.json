@@ -3,7 +3,7 @@
   "displayName": "LLM Prompt Scaffold",
   "description": "Generates project structure and aggregate code file from selected file context.",
   "version": "0.0.1",
-  "publisher": "abcdevco",
+  "publisher": "memeticode",
   "repository": {
     "type": "git",
     "url": "https://github.com/Memeticode/llm-prompt-scaffold.git"
@@ -64,6 +64,29 @@
     },
     "commands": [
       {
+        "command": "llmPromptScaffold.setActiveWorkspace",
+        "title": "Set Active Workspace",
+        "description": "Sets the active workspace folder LLM Prompt Scaffold will operate in."
+      },
+      {
+        "command": "llmPromptScaffold.generateAllPromptOutFiles",
+        "title": "Generate All Prompt Files",
+        "description": "Reloads all prompt files based on the active workspace folder's prompt configuration",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "llmPromptScaffold.openPromptOutFolder",
+        "title": "Open Prompt Output Folder",
+        "description": "Opens the system folder which contains the active workspace folder's generated prompt out files",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "llmPromptScaffold.openPromptOutFolder",
+        "title": "Open Prompt Output Folder",
+        "description": "Opens the system folder which contains the active workspace folder's generated prompt out files",
+        "icon": "$(folder-opened)"
+      },
+      {
         "command": "llmPromptScaffold.reloadPromptConfigurationContent",
         "title": "LLM Prompt Scaffold: Reloads Prompt Configuration",
         "description": "Reloads content in the 'Prompt Configuration' sidebar window (replaces any existing content with default content)",
@@ -92,24 +115,6 @@
         "command": "llmPromptScaffold.openPromptOutFile",
         "title": "Open Prompt Output File",
         "icon": "$(folder-opened)"
-      },
-      {
-        "command": "llmPromptScaffold.openPromptOutFolder",
-        "title": "Open System Folder",
-        "description": "Open the system folder containing prompt output files",
-        "icon": "$(folder-opened)"
-      },
-      {
-        "command": "llmPromptScaffold.currentFileContextExpandAll",
-        "title": "Expand All",
-        "description": "Fully expand the current file context",
-        "icon": "$(expand-all)"
-      },
-      {
-        "command": "llmPromptScaffold.currentFileContextCollapseAll",
-        "title": "Collapse All",
-        "description": "Collapse the current file context",
-        "icon": "$(collapse-all)"
       }
     ],
     "viewsContainers": {
@@ -124,34 +129,35 @@
     "views": {
       "project-sidebar": [
         {
+          "id": "workspaceSelectorView",
+          "name": "Active Workspace Folder",
+          "description": "For multi-folder workspaces, select a single project folder for the extension to work with.",
+          "type": "tree"
+        },
+        {
           "id": "promptConfigurationView",
           "name": "Prompt Configuration",
           "description": "View and edit prompt configuration information",
           "type": "tree"
         },
         {
-          "id": "fileStructureContextView",
-          "name": "File Structure Context",
+          "id": "promptGenerationView",
+          "name": "Prompt Generation",
           "type": "tree",
-          "description": "Displays files which will be included in file structure context."
+          "description": "Generate, edit, and export prompt files suitable for loading to an LLM"
         }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "llmPromptScaffold.refreshFileStructureContext",
-          "when": "view == fileStructureContextView",
-          "group": "navigation"
-        },
-        {
-          "command": "llmPromptScaffold.generatePromptOutFiles",
-          "when": "view == sidebar-out-files",
+          "command": "llmPromptScaffold.generateAllPromptOutFiles",
+          "when": "view == promptGenerationView",
           "group": "navigation"
         },
         {
           "command": "llmPromptScaffold.openPromptOutFolder",
-          "when": "view == sidebar-out-files",
+          "when": "view == promptGenerationView",
           "group": "navigation"
         }
       ]
