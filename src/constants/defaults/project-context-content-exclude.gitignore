@@ -1,5 +1,7 @@
-# Flagged files will be excluded from the prompt file content info, which contains the full content of files in the project
 # Interpreted as a .gitignore
+# Flagged files will be excluded from the prompt file content context, which contains the text content of a subset of files in the project
+# Content exclusions may be overridden by content inclusions
+# Content include/exclude rules are applied after structure include/exclude rules and do not override structure rules
 
 *.pdf
 *.png

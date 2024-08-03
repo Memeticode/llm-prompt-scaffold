@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { BaseManager } from './baseManager';
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 import { ExtensionConfigurationManager } from './extensionConfigurationManager';
 import { ExtensionStorageManager } from './extensionStorageManager';
-import { EXTENSION_STORAGE } from '../utils/extensionUtils';
+import { BaseManager } from './baseManager';
 
 export class VscodeEventManager extends BaseManager {
     constructor(

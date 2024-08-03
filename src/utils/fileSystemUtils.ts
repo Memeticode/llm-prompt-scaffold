@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { FileFilter } from '../utils/fileFilters';
 
 export class FileSystemUtils {
+
+    // FILE INFO 
     static async getFileTypeAsync(uri: vscode.Uri): Promise<vscode.FileType> {
         const stat = await vscode.workspace.fs.stat(uri);
         return stat.type;
@@ -19,6 +21,42 @@ export class FileSystemUtils {
         }
     }
 
+    static async getFileSizeFormattedAsync(fileUri: vscode.Uri): Promise<string> {
+        try {
+            const fileStat = await vscode.workspace.fs.stat(fileUri);
+            if (fileStat) {
+                return this.formatFileSize(fileStat.size);
+            }
+            return '-- B';
+        } catch (error) {
+            if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+                return 'DNE';
+            }
+            throw error;
+        }
+    }
+
+    private static formatFileSize(bytes: number): string {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        if (bytes === 0) {
+            return `0 ${units[0]}`;
+        }
+        
+        let size = bytes;
+        let unitIndex = 0;
+    
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+    
+        // Convert to string with 2 decimal places and remove trailing zeros
+        const sizeStr = size.toFixed(2).replace(/\.?0+$/, '');
+    
+        return `${sizeStr} ${units[unitIndex]}`;
+    }
+
+    // READ FILE
     static async readFileAsync(uri: vscode.Uri): Promise<string> {
         const fileContent = await vscode.workspace.fs.readFile(uri);
         return Buffer.from(fileContent).toString('utf8');
@@ -51,6 +89,7 @@ export class FileSystemUtils {
         }
     }
 
+    // DELETE / EDIT FILE
     static async deleteFileAsync(uri: vscode.Uri): Promise<void> {
         await vscode.workspace.fs.delete(uri);
     }

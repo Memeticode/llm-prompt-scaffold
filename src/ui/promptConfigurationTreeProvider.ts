@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
+import { ExtensionUtils } from '../utils/extensionUtils';
 import { ExtensionConfigurationManager } from '../managers/extensionConfigurationManager';
-import { EXTENSION_STORAGE, ExtensionUtils } from '../utils/extensionUtils';
 import { BaseProvider } from './baseProvider';
 
 export class PromptConfigurationTreeProvider extends BaseProvider implements vscode.TreeDataProvider<ConfigurationItem> {
@@ -50,9 +51,9 @@ export class PromptConfigurationTreeProvider extends BaseProvider implements vsc
 
     private getRootItems(workspace: vscode.WorkspaceFolder): ConfigurationItem[] {
         return [
-            new ConfigurationItem('System Prompt', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'SYSTEM_PROMPT')),
-            new ConfigurationItem('Project Description', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'PROJECT_DESCRIPTION')),
-            new ConfigurationItem('Session Goals', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'PROJECT_GOALS')),
+            new ConfigurationItem('System Prompt', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'SYSTEM_PROMPT')),
+            new ConfigurationItem('Project Description', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'PROJECT_DESCRIPTION')),
+            new ConfigurationItem('Session Goals', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'PROJECT_GOALS')),
             new ConfigurationItem('File Context', vscode.TreeItemCollapsibleState.Collapsed, 'fileContext')
         ];
     }
@@ -66,20 +67,20 @@ export class PromptConfigurationTreeProvider extends BaseProvider implements vsc
 
     private getStructureItems(workspace: vscode.WorkspaceFolder): ConfigurationItem[] {
         return [
-            new ConfigurationItem('Exclude', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'PROJECT_CONTEXT_STRUCTURE_EXCLUDE')),
-            new ConfigurationItem('Include', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'PROJECT_CONTEXT_STRUCTURE_INCLUDE'))
+            new ConfigurationItem('Exclude', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'PROJECT_CONTEXT_STRUCTURE_EXCLUDE')),
+            new ConfigurationItem('Include', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'PROJECT_CONTEXT_STRUCTURE_INCLUDE'))
         ];
     }
 
     private getContentItems(workspace: vscode.WorkspaceFolder): ConfigurationItem[] {
         return [
-            new ConfigurationItem('Exclude', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'PROJECT_CONTEXT_CONTENT_EXCLUDE')),
-            new ConfigurationItem('Include', vscode.TreeItemCollapsibleState.None, 'file', this.getFileCommand(workspace, 'PROJECT_CONTEXT_CONTENT_INCLUDE'))
+            new ConfigurationItem('Exclude', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'PROJECT_CONTEXT_CONTENT_EXCLUDE')),
+            new ConfigurationItem('Include', vscode.TreeItemCollapsibleState.None, 'file', this.getOpenFileCommand(workspace, 'PROJECT_CONTEXT_CONTENT_INCLUDE'))
         ];
     }
 
-    private getFileCommand(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): vscode.Command {
-        const fileUri = ExtensionUtils.getExtensionStorageFileUri(workspace, fileType);
+    private getOpenFileCommand(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): vscode.Command {
+        const fileUri = ExtensionUtils.getExtensionStoragePromptConfigFileUri(workspace, fileType);
         return {
             command: 'vscode.open',
             title: 'Open File',

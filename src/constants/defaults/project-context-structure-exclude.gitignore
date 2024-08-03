@@ -1,5 +1,7 @@
-# Flagged files will be excluded from the prompt file structure info, which contains a list of files in the project
 # Interpreted as a .gitignore
+# Flagged files will be excluded from the prompt file structure context, which contains a summary of the project structure (folders and files)
+# Structure exclusions may be overridden by structure inclusions
+# Structure include/exclude rules are applied before content include/exclude rules
 
 .git
 .gitignore

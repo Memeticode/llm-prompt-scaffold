@@ -1,3 +1,5 @@
-# Flagged files will be included in the prompt file structure context, which contains a list of files in the project
-# Overrides structure context exclusions
 # Interpreted as a reverse .gitignore
+# Flagged files will be included in the prompt file structure context, which contains a summary of the project structure (folders and files)
+# Structure inclusions will override structure exclusions
+# Structure include/exclude rules are applied before content include/exclude rules
+

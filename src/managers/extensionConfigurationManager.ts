@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { BaseManager } from './baseManager';
-import { EXTENSION_STORAGE } from '../utils/extensionUtils';
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 
 
 export class ExtensionConfigurationManager extends BaseManager {

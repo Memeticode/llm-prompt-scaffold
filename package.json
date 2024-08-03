@@ -65,56 +65,53 @@
     "commands": [
       {
         "command": "llmPromptScaffold.setActiveWorkspace",
-        "title": "Set Active Workspace",
-        "description": "Sets the active workspace folder LLM Prompt Scaffold will operate in."
+        "title": "LLM Prompt Scaffold: Set Active Workspace",
+        "description": "Sets the active workspace folder LLM Prompt Scaffold will operate in"
       },
       {
-        "command": "llmPromptScaffold.generateAllPromptOutFiles",
-        "title": "Generate All Prompt Files",
-        "description": "Reloads all prompt files based on the active workspace folder's prompt configuration",
-        "icon": "$(sync)"
+        "command": "llmPromptScaffold.setDefaultPromptConfiguration",
+        "title": "LLM Prompt Scaffold: Set Default Prompt Configuration",
+        "description": "Sets all prompt configuration items to their default values in the active workspace (will clear existing configuration)"
       },
       {
-        "command": "llmPromptScaffold.openPromptOutFolder",
-        "title": "Open Prompt Output Folder",
-        "description": "Opens the system folder which contains the active workspace folder's generated prompt out files",
-        "icon": "$(folder-opened)"
+        "command": "llmPromptScaffold.setDefaultPromptConfigurationItem",
+        "title": "LLM Prompt Scaffold: Set Default Prompt Configuration Item",
+        "description": "Sets a specific prompt configuration item to its default value in the active workspace (will clear existing configuration)"
       },
       {
-        "command": "llmPromptScaffold.openPromptOutFolder",
-        "title": "Open Prompt Output Folder",
-        "description": "Opens the system folder which contains the active workspace folder's generated prompt out files",
-        "icon": "$(folder-opened)"
+        "command": "llmPromptScaffold.openPromptConfigurationItem",
+        "title": "LLM Prompt Scaffold: Open Prompt Configuration Item",
+        "description": "Opens specified prompt configuration item file in the editor"
       },
       {
-        "command": "llmPromptScaffold.reloadPromptConfigurationContent",
-        "title": "LLM Prompt Scaffold: Reloads Prompt Configuration",
-        "description": "Reloads content in the 'Prompt Configuration' sidebar window (replaces any existing content with default content)",
-        "icon": "$(refresh)"
+        "command": "llmPromptScaffold.generatePrompts",
+        "title": "LLM Prompt Scaffold: Generate Prompts",
+        "description": "Loads or reloads all generated prompt items in the active workspace (will clear existing generated prompts)"
       },
       {
-        "command": "llmPromptScaffold.initializeWorkspaceStorageFolders",
-        "title": "Initialize/Refresh Prompt Scaffold Workspace Storage Folders"
+        "command": "llmPromptScaffold.generatePromptItem",
+        "title": "LLM Prompt Scaffold: Generate Prompt Item",
+        "description": "Loads or reloads a specific generated prompt item in the active workspace (will clear existing generated prompt item)"
       },
       {
-        "command": "llmPromptScaffold.refreshFileStructureContext",
-        "title": "Refresh File Structure Context",
-        "icon": "$(refresh)"
+        "command": "llmPromptScaffold.openGeneratedPromptItem",
+        "title": "LLM Prompt Scaffold: Open Generated Prompt Item",
+        "description": "Opens specified generated prompt item file in the active workspace in the editor"
       },
       {
-        "command": "llmPromptScaffold.openProjectInfoFile",
-        "title": "Opens Project Info File in Editor"
+        "command": "llmPromptScaffold.copyGeneratedPromptItemToClipboard",
+        "title": "LLM Prompt Scaffold: Copy Generated Prompt Item to Clipboard",
+        "description": "Copies the content of the specified generated prompt item to the clipboard"
       },
       {
-        "command": "llmPromptScaffold.generatePromptOutFiles",
-        "title": "Refresh Prompt Output Files",
-        "description": "(Re)generate all prompt output files",
-        "icon": "$(refresh)"
+        "command": "llmPromptScaffold.openGeneratedPromptItemFileInFileManager",
+        "title": "LLM Prompt Scaffold: Open Generated Prompt Item File in File Manager",
+        "description": "Opens specified generated prompt item file in the active workspace in the system file manager"
       },
       {
-        "command": "llmPromptScaffold.openPromptOutFile",
-        "title": "Open Prompt Output File",
-        "icon": "$(folder-opened)"
+        "command": "llmPromptScaffold.openGeneratedPromptFolderInFileManager",
+        "title": "LLM Prompt Scaffold: Open Generated Prompt Folder in File Manager",
+        "description": "Opens folder with generated prompt item files for active workspace in the system file manager"
       }
     ],
     "viewsContainers": {
@@ -149,16 +146,21 @@
       ]
     },
     "menus": {
-      "view/title": [
-        {
-          "command": "llmPromptScaffold.generateAllPromptOutFiles",
-          "when": "view == promptGenerationView",
-          "group": "navigation"
-        },
+      "view/title": [        
         {
           "command": "llmPromptScaffold.openPromptOutFolder",
           "when": "view == promptGenerationView",
           "group": "navigation"
+        },
+        {
+          "command": "llmPromptScaffold.regenerateAllPromptOutFiles",
+          "when": "view == promptGenerationView",
+          "group": "navigation"
+        },
+        {
+          "command": "llmPromptScaffold.regenerateAndOpenPromptOutFileInEditor",
+          "when": "view == promptGenerationView",
+          "group": "inline"
         }
       ]
     }

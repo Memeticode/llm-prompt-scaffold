@@ -1,14 +1,22 @@
 import * as vscode from 'vscode';
+import { EXTENSION_STORAGE } from './constants/extensionStorage';
+import { ExtensionUtils } from './utils/extensionUtils';
 import { ExtensionConfigurationManager } from './managers/extensionConfigurationManager';
 import { ExtensionStorageManager } from './managers/extensionStorageManager';
 import { VscodeEventManager } from './managers/vscodeEventManager';
 import { WorkspaceSelectionTreeProvider } from './ui/workspaceSelectionTreeProvider';
 import { PromptConfigurationTreeProvider } from './ui/promptConfigurationTreeProvider';
 import { PromptGenerationTreeProvider } from './ui/promptGenerationTreeProvider';
-import { EXTENSION_STORAGE, ExtensionUtils } from './utils/extensionUtils';
+
 
 
 let outputChannel: vscode.OutputChannel;
+let configManager: ExtensionConfigurationManager;
+let storageManager: ExtensionStorageManager;
+let eventManager: VscodeEventManager;
+let workspaceSelectionProvider: WorkspaceSelectionTreeProvider;
+let promptConfigProvider: PromptConfigurationTreeProvider;
+let promptGenerationProvider: PromptGenerationTreeProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
     // Create and store the output channel
@@ -49,13 +57,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('llmPromptScaffold.refreshWorkspaceView', () => {
-            workspaceSelectionTreeProvider.refresh();
-        })
-    );
-
+    
 
 
     // PROMPT CONFIGURATION
@@ -64,57 +66,92 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider('promptConfigurationView', promptConfigProvider);
 
     // Register a command to refresh the prompt configuration view
+
+    // why not pushing to context subscriptions?
     vscode.commands.registerCommand('llmPromptScaffold.refreshPromptConfiguration', () => {
-        promptConfigProvider.refresh();
+        try {
+            promptConfigProvider.refresh();
+        } catch(error) {
+            vscode.window.showErrorMessage(`Error refreshing prompt configuration: ${error}`);
+        }
     });
 
 
     // PROMPT GENERATION
     // This view will allow the user to view, generate, and export prompt files suitable for loading into an llm
-    const promptGenerationProvider = new PromptGenerationTreeProvider("PromptGenerationTreeProvider", outputChannel, configManager, storageManager);
+    const promptGenerationProvider = new PromptGenerationTreeProvider("PromptGenerationTreeProvider", outputChannel, configManager);
     vscode.window.createTreeView('promptGenerationView', { 
         treeDataProvider: promptGenerationProvider
     });
     
     context.subscriptions.push(
-        vscode.commands.registerCommand('llmPromptScaffold.generateAllPromptOutFiles', async () => {
-            const workspace = configManager.getActiveWorkspace();
-            if (workspace) {
-                try {
-                    await storageManager.generatePromptFilesAsync(workspace);
-                    promptGenerationProvider.refresh();
-                    vscode.window.showInformationMessage('All prompt files generated successfully.');
-                } catch (error) {
-                    vscode.window.showErrorMessage(`Error generating prompt files: ${error}`);
-                }
-            } else {
-                vscode.window.showErrorMessage('No active workspace selected.');
-            }
-        })
-    );
-
-    context.subscriptions.push(
         vscode.commands.registerCommand('llmPromptScaffold.openPromptOutFolder', async () => {
             const workspace = configManager.getActiveWorkspace();
-            if (workspace) {
+            if (!workspace) {
+                vscode.window.showErrorMessage('No active workspace selected.');
+                return;
+            }
+            try {
                 const outDir = vscode.Uri.joinPath(ExtensionUtils.getExtensionStorageFolderUri(workspace), EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME);
                 vscode.env.openExternal(outDir);
-            } else {
-                vscode.window.showErrorMessage('No active workspace selected.');
+            } catch(error) {
+                vscode.window.showErrorMessage(`Error opening prompt out folder: ${error}`);
             }
         })
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('llmPromptScaffold.openOrGeneratePromptFile', async (workspace: vscode.WorkspaceFolder, fileKey: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES) => {
+        vscode.commands.registerCommand('llmPromptScaffold.generatePromptOutFiles', async () => {
+            const workspace = configManager.getActiveWorkspace();
+            if (!workspace) {
+                vscode.window.showErrorMessage('No active workspace selected.');
+                return;
+            }
             try {
-                const fileUri = await storageManager.generatePromptFileAsync(workspace, fileKey);
-                const document = await vscode.workspace.openTextDocument(fileUri);
-                await vscode.window.showTextDocument(document);
+                await storageManager.generatePromptFilesAsync(workspace);
+                promptGenerationProvider.refresh();
             } catch (error) {
-                vscode.window.showErrorMessage(`Error opening/generating prompt file: ${error}`);
+                vscode.window.showErrorMessage(`Error generating prompt files: ${error}`);
             }
         })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('llmPromptScaffold.openPromptOutFileInEditor', 
+            async (fileKey: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES) => {
+                const workspace = configManager.getActiveWorkspace();
+                if (!workspace) {
+                    vscode.window.showErrorMessage('No active workspace selected.');
+                    return;
+                }
+                try {
+                    const fileUri = await storageManager.generatePromptOutFileAsyncIfNotExistsAsync(workspace, fileKey);
+                    const document = await vscode.workspace.openTextDocument(fileUri);
+                    await vscode.window.showTextDocument(document);
+                } catch (error) {
+                    vscode.window.showErrorMessage(`Error opening prompt file: ${error}`);
+                }
+            }
+        )
+    );
+    
+    context.subscriptions.push(
+        vscode.commands.registerCommand('llmPromptScaffold.regenerateAndOpenPromptOutFileInEditor', 
+            async (fileKey: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES) => {                
+                const workspace = configManager.getActiveWorkspace();
+                if (workspace) {
+                    try {
+                        const fileUri = await storageManager.generatePromptOutFileAsync(workspace, fileKey);
+                        const document = await vscode.workspace.openTextDocument(fileUri);
+                        await vscode.window.showTextDocument(document);
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`Error regenerating prompt file: ${error}`);
+                    }
+                } else {
+                    vscode.window.showErrorMessage('No active workspace selected.');
+                }
+            }
+        )
     );
 
 
@@ -132,6 +169,12 @@ export async function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     outputChannel.appendLine('LLM Prompt Scaffold extension is deactivating.');
     if (outputChannel) { outputChannel.dispose(); }
+    if (configManager) { configManager.dispose(); }
+    if (storageManager) { storageManager.dispose(); }
+    if (eventManager) { eventManager.dispose(); }
+    if (workspaceSelectionProvider) { workspaceSelectionProvider.dispose(); }
+    if (promptConfigProvider) { promptConfigProvider.dispose(); }
+    if (promptGenerationProvider) { promptGenerationProvider.dispose(); }
     outputChannel.appendLine('LLM Prompt Scaffold extension deactivated successfully.');
 }
 

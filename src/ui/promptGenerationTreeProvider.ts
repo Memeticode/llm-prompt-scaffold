@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 import { ExtensionConfigurationManager } from '../managers/extensionConfigurationManager';
-import { ExtensionStorageManager } from '../managers/extensionStorageManager';
-import { EXTENSION_STORAGE, ExtensionUtils } from '../utils/extensionUtils';
 import { BaseProvider } from './baseProvider';
+import { ExtensionUtils } from '../utils/extensionUtils';
+import { FileSystemUtils } from '../utils/fileSystemUtils';
 
 export class PromptGenerationTreeProvider extends BaseProvider implements vscode.TreeDataProvider<PromptGenerationItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<PromptGenerationItem | undefined | null | void> = new vscode.EventEmitter<PromptGenerationItem | undefined | null | void>();
@@ -11,10 +12,10 @@ export class PromptGenerationTreeProvider extends BaseProvider implements vscode
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private configManager: ExtensionConfigurationManager,
-        private storageManager: ExtensionStorageManager
+        private configManager: ExtensionConfigurationManager
     ) {
         super(logName, outputChannel);
+        this.configManager.onActiveWorkspaceChanged(() => this.refresh());
     }
 
     refresh(): void {
@@ -25,45 +26,85 @@ export class PromptGenerationTreeProvider extends BaseProvider implements vscode
         return element;
     }
 
-    getChildren(element?: PromptGenerationItem): Thenable<PromptGenerationItem[]> {
+    async getChildren(element?: PromptGenerationItem): Promise<PromptGenerationItem[]> {
         const activeWorkspace = this.configManager.getActiveWorkspace();
         if (!activeWorkspace) {
-            return Promise.resolve([
+            return [
                 new PromptGenerationItem(
-                    'No active workspace',
+                    'NO_ACTIVE_WORKSPACE',
                     vscode.TreeItemCollapsibleState.None,
                     'message',
-                    undefined,
-                    new vscode.ThemeIcon('warning')
+                    {
+                        command: 'llmPromptScaffold.setActiveWorkspace',
+                        title: 'Select Active Workspace'
+                    }
                 )
-            ]);
+            ];
         }
-
-        return Promise.resolve(this.getPromptOutFiles(activeWorkspace));
+        return this.getPromptOutFilesAsync(activeWorkspace);
     }
-
-    private getPromptOutFiles(workspace: vscode.WorkspaceFolder): PromptGenerationItem[] {
-        return Object.entries(EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES).map(([key, fileName]) => 
-            new PromptGenerationItem(
-                this.formatLabel(key),
+    
+    private async getPromptOutFilesAsync(workspace: vscode.WorkspaceFolder): Promise<PromptGenerationItem[]> {
+        const items = await Promise.all(Object.entries(EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES).map(async ([key, fileName]) => {
+            const fileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES);
+            const fileSize = await FileSystemUtils.getFileSizeFormattedAsync(fileUri);
+            return new PromptGenerationItem(
+                key,
                 vscode.TreeItemCollapsibleState.None,
                 'file',
                 {
-                    command: 'llmPromptScaffold.openOrGeneratePromptFile',
-                    title: 'Open or Generate Prompt File',
+                    command: 'llmPromptScaffold.openPromptOutFileInEditor',
+                    title: 'Open Prompt Out File',
                     arguments: [workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES]
                 },
-                this.getFileIcon(key)
-            )
-        );
-    }
+                [{
+                    command: 'llmPromptScaffold.regenerateAndOpenPromptOutFileInEditor',
+                    title: 'Regenerate',
+                    arguments: [workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES]
+                }],
+                fileSize
+            );
+        }));
 
-    private formatLabel(key: string): string {
-        return key.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
+        return items;
     }
+    
 
-    private getFileIcon(key: string): vscode.ThemeIcon {
-        switch (key) {
+}
+
+
+
+class PromptGenerationItem extends vscode.TreeItem {
+    constructor(
+        public readonly fileKey: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly contextValue: string,
+        public readonly command?: vscode.Command,
+        public readonly buttons?: vscode.Command[],
+        public readonly fileSize?: string
+    ) {
+        const label = fileKey.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
+        super(label, collapsibleState);
+
+        this.fileKey = fileKey;
+        this.contextValue = contextValue;
+        if (command) {
+            this.command = command;
+        }
+        if (buttons) {
+            this.buttons = buttons;
+        }
+        this.iconPath = this.getThemeIcon();
+        this.description = `${fileSize}`;
+
+    }
+    
+    // private static formatLabel(key: string): string {
+    //     return key.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
+    // }
+
+    private getThemeIcon(): vscode.ThemeIcon {
+        switch (this.fileKey) {
             case 'SYSTEM_PROMPT':
                 return new vscode.ThemeIcon('symbol-keyword');
             case 'PROJECT_DESCRIPTION':
@@ -75,26 +116,7 @@ export class PromptGenerationTreeProvider extends BaseProvider implements vscode
             case 'FILE_CONTEXT_CONTENT':
                 return new vscode.ThemeIcon('symbol-file');
             default:
-                return new vscode.ThemeIcon('file');
-        }
-    }
-}
-
-class PromptGenerationItem extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly contextValue: string,
-        public readonly command?: vscode.Command,
-        public readonly iconPath?: vscode.ThemeIcon
-    ) {
-        super(label, collapsibleState);
-        this.contextValue = contextValue;
-        if (command) {
-            this.command = command;
-        }
-        if (iconPath) {
-            this.iconPath = iconPath;
+                return new vscode.ThemeIcon('warning');
         }
     }
 }

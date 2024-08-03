@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { BaseManager } from './baseManager';
-import { EXTENSION_STORAGE, ExtensionUtils } from '../utils/extensionUtils';
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
+import { ExtensionUtils } from '../utils/extensionUtils';
 import { FileSystemUtils } from '../utils/fileSystemUtils';
 import { FileFilter } from '../utils/fileFilters';
-import { error } from 'console';
 
 export class ExtensionStorageManager extends BaseManager {
     constructor(
@@ -41,15 +41,13 @@ export class ExtensionStorageManager extends BaseManager {
         this.logMessage(`Generating prompt files for workspace: ${workspace.name}`);
         try 
         {
-            const outDir = vscode.Uri.joinPath(ExtensionUtils.getExtensionStorageFolderUri(workspace), EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME);
-        
-            await this.generateSystemPrompt(workspace, outDir);
-            await this.generateProjectDescription(workspace, outDir);
-            await this.generateCurrentGoals(workspace, outDir);
-            await this.generateFileStructure(workspace, outDir);
-            await this.generateFileContent(workspace, outDir);
+            await this.generatePromptOutFileAsync(workspace, 'SYSTEM_PROMPT');
+            await this.generatePromptOutFileAsync(workspace, 'PROJECT_DESCRIPTION');
+            await this.generatePromptOutFileAsync(workspace, 'PROJECT_GOALS');
+            await this.generatePromptOutFileAsync(workspace, 'FILE_CONTEXT_STRUCTURE');
+            await this.generatePromptOutFileAsync(workspace, 'FILE_CONTEXT_CONTENT');
     
-            this.logMessage(`Prompt files generated successfully for workspace '${workspace.name}'`);
+            this.logMessage(`Prompt out files generated successfully for workspace '${workspace.name}'`);
     
         }
         catch (error) {
@@ -59,29 +57,42 @@ export class ExtensionStorageManager extends BaseManager {
         }
     }
 
-    async generatePromptFileAsync(workspace: vscode.WorkspaceFolder, fileKey: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES): Promise<vscode.Uri> {
-        const outDir = vscode.Uri.joinPath(ExtensionUtils.getExtensionStorageFolderUri(workspace), EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.NAME);
-        const fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES[fileKey];
-        const fileUri = vscode.Uri.joinPath(outDir, fileName);
+    async generatePromptOutFileAsyncIfNotExistsAsync(workspace: vscode.WorkspaceFolder, fileKey: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES): Promise<vscode.Uri> {
+        let fileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, fileKey);
+        if (!(await FileSystemUtils.fileExistsAsync(fileUri))) {
+            this.logMessage(`"${fileKey}" prompt out file does not exist: ${fileUri}`);
+            fileUri = await this.generatePromptOutFileAsync(workspace, fileKey);
+        }
+        return fileUri;
+    }
 
+    async generatePromptOutFileAsync(workspace: vscode.WorkspaceFolder, fileKey: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES): Promise<vscode.Uri> {
+        let fileUri: vscode.Uri;
         switch (fileKey) {
             case 'SYSTEM_PROMPT':
-                await this.generateSystemPrompt(workspace, outDir);
+                fileUri = await this.generatePromptOutSystemPromptAsync(workspace);
                 break;
             case 'PROJECT_DESCRIPTION':
-                await this.generateProjectDescription(workspace, outDir);
+                fileUri = await this.generateProjectDescriptionAsync(workspace);
                 break;
             case 'PROJECT_GOALS':
-                await this.generateCurrentGoals(workspace, outDir);
+                fileUri = await this.generateCurrentGoalsAsync(workspace);
                 break;
             case 'FILE_CONTEXT_STRUCTURE':
-                await this.generateFileStructure(workspace, outDir);
+                fileUri = await this.generateFileStructureAsync(workspace);
                 break;
             case 'FILE_CONTEXT_CONTENT':
-                await this.generateFileContent(workspace, outDir);
+                fileUri = await this.generateFileContentAsync(workspace);
                 break;
         }
-
+        if (!fileUri)
+        {
+            throw new Error(`An error occurred when generating the "${fileUri}" prompt out file`);
+        }
+        else 
+        {
+            this.logMessage(`Generated prompt out file: ${fileUri}`);
+        }
         return fileUri;
     }
 
@@ -112,6 +123,7 @@ export class ExtensionStorageManager extends BaseManager {
         return vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri)
             .get(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
     }
+    
 
     private async createStorageFolder(uri: vscode.Uri): Promise<void> {
         this.logMessage(`Creating storage folder: ${uri.fsPath}`);
@@ -127,7 +139,7 @@ export class ExtensionStorageManager extends BaseManager {
         for (const [fileKey, fileName] of Object.entries(EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES)) {
             const fileUri = vscode.Uri.joinPath(configFolderUri, fileName);
             if (!(await FileSystemUtils.fileExistsAsync(fileUri))) {
-                const defaultContent = await ExtensionUtils.getExtensionStorageFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES);
+                const defaultContent = await ExtensionUtils.getExtensionStoragePromptConfigFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES);
                 await FileSystemUtils.writeFileAsync(fileUri, defaultContent);
                 this.logMessage(`Created config file: ${fileUri.fsPath}`);
             }
@@ -153,37 +165,37 @@ export class ExtensionStorageManager extends BaseManager {
 
     // PROMPT OUT FILE GENERATION METHODS
 
-    private async generateSystemPrompt(workspace: vscode.WorkspaceFolder, outDir: vscode.Uri): Promise<void> {
-        const sourceUri = ExtensionUtils.getExtensionStorageFileUri(workspace, 'SYSTEM_PROMPT');
-        const targetUri = vscode.Uri.joinPath(outDir, 'system_prompt.txt');
-        await this.copyFileWithoutCommentsAsync(sourceUri, targetUri);
+    private async generatePromptOutSystemPromptAsync(workspace: vscode.WorkspaceFolder): Promise<vscode.Uri> {
+        const sourceFileUri = ExtensionUtils.getExtensionStoragePromptConfigFileUri(workspace, 'SYSTEM_PROMPT');
+        const outFileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, 'SYSTEM_PROMPT');
+        await this.copyFileWithoutCommentsAsync(sourceFileUri, outFileUri);
+        return outFileUri;
     }
 
-    private async generateProjectDescription(workspace: vscode.WorkspaceFolder, outDir: vscode.Uri): Promise<void> {
-        const sourceUri = ExtensionUtils.getExtensionStorageFileUri(workspace, 'PROJECT_DESCRIPTION');
-        const targetUri = vscode.Uri.joinPath(outDir, 'project_description.txt');
-        await this.copyFileWithoutCommentsAsync(sourceUri, targetUri);
+    private async generateProjectDescriptionAsync(workspace: vscode.WorkspaceFolder): Promise<vscode.Uri> {
+        const sourceFileUri = ExtensionUtils.getExtensionStoragePromptConfigFileUri(workspace, 'PROJECT_DESCRIPTION');
+        const outFileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, 'PROJECT_DESCRIPTION');
+        await this.copyFileWithoutCommentsAsync(sourceFileUri, outFileUri);
+        return outFileUri;
     }
 
-    private async generateCurrentGoals(workspace: vscode.WorkspaceFolder, outDir: vscode.Uri): Promise<void> {
-        const sourceUri = ExtensionUtils.getExtensionStorageFileUri(workspace, 'PROJECT_GOALS');
-        const targetUri = vscode.Uri.joinPath(outDir, 'current_goals.txt');
-        await this.copyFileWithoutCommentsAsync(sourceUri, targetUri);
+    private async generateCurrentGoalsAsync(workspace: vscode.WorkspaceFolder): Promise<vscode.Uri> {
+        const sourceFileUri = ExtensionUtils.getExtensionStoragePromptConfigFileUri(workspace, 'PROJECT_GOALS');
+        const outFileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, 'PROJECT_GOALS');
+        await this.copyFileWithoutCommentsAsync(sourceFileUri, outFileUri);
+        return outFileUri;
     }
 
-    private async generateFileStructure(workspace: vscode.WorkspaceFolder, outDir: vscode.Uri): Promise<void> {
-        const targetUri = vscode.Uri.joinPath(outDir, 'file_structure.txt');
-        const structureFilter = await this.createStructureFilter(workspace);
-        const fileStructure = await this.getFileStructure(workspace.uri, structureFilter);
-        await FileSystemUtils.writeFileAsync(targetUri, fileStructure);
+    private async generateFileStructureAsync(workspace: vscode.WorkspaceFolder): Promise<vscode.Uri> {
+        const outFileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, 'FILE_CONTEXT_STRUCTURE');
+        await FileSystemUtils.writeFileAsync(outFileUri, "fileStructure-contentGoHere");
+        return outFileUri;
     }
 
-    private async generateFileContent(workspace: vscode.WorkspaceFolder, outDir: vscode.Uri): Promise<void> {
-        const targetUri = vscode.Uri.joinPath(outDir, 'file_content.txt');
-        const structureFilter = await this.createStructureFilter(workspace);
-        const contentFilter = await this.createContentFilter(workspace);
-        const fileContent = await this.getFileContent(workspace.uri, structureFilter, contentFilter);
-        await FileSystemUtils.writeFileAsync(targetUri, fileContent);
+    private async generateFileContentAsync(workspace: vscode.WorkspaceFolder): Promise<vscode.Uri> {
+        const outFileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, 'FILE_CONTEXT_CONTENT');        
+        await FileSystemUtils.writeFileAsync(outFileUri, "fileContent-contentGoHere");
+        return outFileUri;
     }
 
     private async createStructureFilter(workspace: vscode.WorkspaceFolder): Promise<FileFilter> {

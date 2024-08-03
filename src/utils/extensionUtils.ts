@@ -1,36 +1,6 @@
 import * as vscode from 'vscode';
 import { FileSystemUtils } from './fileSystemUtils';
-
-
-export const EXTENSION_STORAGE = {
-    EXTENSION_ID: "memeticode.llm-prompt-scaffold",
-    CONFIG_KEY: 'extensionStorageDirectory',
-    STORAGE_FOLDER_NAME_FALLBACK: '.llm-prompt-scaffold',
-    STRUCTURE: {
-        PROMPT_CONFIG_DIR: {
-            NAME: 'config',
-            FILES: {
-                SYSTEM_PROMPT: 'project-system-prompt.txt',
-                PROJECT_DESCRIPTION: 'project-description.txt',
-                PROJECT_GOALS: 'project-goals.txt',
-                PROJECT_CONTEXT_STRUCTURE_INCLUDE: 'project-context-structure-include.gitignore',
-                PROJECT_CONTEXT_STRUCTURE_EXCLUDE: 'project-context-structure-exclude.gitignore',
-                PROJECT_CONTEXT_CONTENT_INCLUDE: 'project-context-content-include.gitignore',
-                PROJECT_CONTEXT_CONTENT_EXCLUDE: 'project-context-content-exclude.gitignore'
-            }
-        },
-        PROMPT_OUT_DIR: {
-            NAME: 'out',
-            FILES: {
-                SYSTEM_PROMPT: 'out-system-prompt.txt',
-                PROJECT_DESCRIPTION: 'out-project-description.txt',
-                PROJECT_GOALS: 'out-project-goals.txt',
-                FILE_CONTEXT_STRUCTURE: 'out-file-context-structure.txt',
-                FILE_CONTEXT_CONTENT: 'out-file-context-content.txt'
-            }
-        }
-    }
-};
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 
 
 export class ExtensionUtils {
@@ -72,7 +42,8 @@ export class ExtensionUtils {
         return storageFolderUris;
     }
 
-    static getExtensionStorageFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): vscode.Uri {
+    // get the uri of a prompt config file (for workspace)
+    static getExtensionStoragePromptConfigFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): vscode.Uri {
         const storageFolderUri = this.getExtensionStorageFolderUri(workspace);
         let fileName: string;
         let dirName: string;
@@ -81,14 +52,30 @@ export class ExtensionUtils {
             fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES];
             dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
         } else {
-            throw new Error(`Unable to get extension storage file item uri. Unknown file type: ${fileType}`);
+            throw new Error(`Unable to get extension storage prompt configuration file item uri. Unknown file type: ${fileType}`);
         }
 
         return vscode.Uri.joinPath(storageFolderUri, dirName, fileName);
     }
 
-    
-    static async getExtensionStorageFileDefaultContent(fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): Promise<string> {
+    // get the uri of a prompt out file (for workspace)
+    static getExtensionStoragePromptOutFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES): vscode.Uri {
+        const storageFolderUri = this.getExtensionStorageFolderUri(workspace);
+        let fileName: string;
+        let dirName: string;
+
+        if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES) {
+            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES];
+            dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
+        } else {
+            throw new Error(`Unable to get extension storage prompt out file item uri. Unknown file type: ${fileType}`);
+        }
+
+        return vscode.Uri.joinPath(storageFolderUri, dirName, fileName);
+    }
+
+    // get default content for extension storage prompt config file
+    static async getExtensionStoragePromptConfigFileDefaultContent(fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES): Promise<string> {
         let fileName: string;
         
         if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES) {
