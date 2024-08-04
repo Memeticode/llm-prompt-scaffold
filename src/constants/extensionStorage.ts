@@ -13,25 +13,84 @@ export const EXTENSION_STORAGE = {
         PROMPT_CONFIG_DIR: {
             NAME: 'config',
             FILES: {
-                SYSTEM_PROMPT: 'project-system-prompt.txt',
-                PROJECT_DESCRIPTION: 'project-description.txt',
-                PROJECT_GOALS: 'project-goals.txt',
-                PROJECT_CONTEXT_STRUCTURE_INCLUDE: 'project-context-structure-include.gitignore',
-                PROJECT_CONTEXT_STRUCTURE_EXCLUDE: 'project-context-structure-exclude.gitignore',
-                PROJECT_CONTEXT_CONTENT_INCLUDE: 'project-context-content-include.gitignore',
-                PROJECT_CONTEXT_CONTENT_EXCLUDE: 'project-context-content-exclude.gitignore'
+                SYSTEM_PROMPT: {
+                    fileName: 'project-system-prompt.txt',
+                    label: 'System Prompt',
+                    description: 'The base prompt used for the project',
+                    icon: 'symbol-keyword'
+                },
+                PROJECT_DESCRIPTION: {
+                    fileName: 'project-description.txt',
+                    label: 'Project Description',
+                    description: 'Description of the entire project',
+                    icon: 'book'
+                },
+                PROJECT_GOALS: {
+                    fileName: 'project-goals.txt',
+                    label: 'Session Goals',
+                    description: 'Current development session goals',
+                    icon: 'target'
+                },
+                PROJECT_CONTEXT_STRUCTURE_INCLUDE: {
+                    fileName: 'project-context-structure-include.gitignore',
+                    label: 'Structure Include Rules',
+                    description: 'Rules for including files in structure summaries',
+                    icon: 'list-tree'
+                },
+                PROJECT_CONTEXT_STRUCTURE_EXCLUDE: {
+                    fileName: 'project-context-structure-exclude.gitignore',
+                    label: 'Structure Exclude Rules',
+                    description: 'Rules for excluding files from structure summaries',
+                    icon: 'list-tree'
+                },
+                PROJECT_CONTEXT_CONTENT_INCLUDE: {
+                    fileName: 'project-context-content-include.gitignore',
+                    label: 'Content Include Rules',
+                    description: 'Rules for including files in content summaries',
+                    icon: 'file-text'
+                },
+                PROJECT_CONTEXT_CONTENT_EXCLUDE: {
+                    fileName: 'project-context-content-exclude.gitignore',
+                    label: 'Content Exclude Rules',
+                    description: 'Rules for excluding files from content summaries',
+                    icon: 'file-text'
+                }
             }
         },
         PROMPT_OUT_DIR: {
             NAME: 'out',
             FILES: {
-                SYSTEM_PROMPT: 'out-system-prompt.txt',
-                PROJECT_DESCRIPTION: 'out-project-description.txt',
-                PROJECT_GOALS: 'out-project-goals.txt',
-                FILE_CONTEXT_STRUCTURE: 'out-file-context-structure.txt',
-                FILE_CONTEXT_CONTENT: 'out-file-context-content.txt'
+                SYSTEM_PROMPT: {
+                    fileName: 'out-system-prompt.txt',
+                    label: 'System Prompt',
+                    description: 'Generated system prompt',
+                    icon: 'symbol-keyword'
+                },
+                PROJECT_DESCRIPTION: {
+                    fileName: 'out-project-description.txt',
+                    label: 'Project Description',
+                    description: 'Generated project description',
+                    icon: 'book'
+                },
+                PROJECT_GOALS: {
+                    fileName: 'out-project-goals.txt',
+                    label: 'Session Goals',
+                    description: 'Generated session goals',
+                    icon: 'target'
+                },
+                FILE_CONTEXT_STRUCTURE: {
+                    fileName: 'out-file-context-structure.txt',
+                    label: 'File Structure',
+                    description: 'Generated file structure context',
+                    icon: 'symbol-structure'
+                },
+                FILE_CONTEXT_CONTENT: {
+                    fileName: 'out-file-context-content.txt',
+                    label: 'File Content',
+                    description: 'Generated file content context',
+                    icon: 'symbol-file'
+                }
             }
         }
     }
 };
-

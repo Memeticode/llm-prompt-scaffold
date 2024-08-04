@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { FileSystemUtils } from './fileSystemUtils';
-import { EXTENSION_STORAGE } from '../constants/extensionStorage';
+import { EXTENSION_STORAGE } from '../../constants/extensionStorage';
 
 
 export class ExtensionUtils {
@@ -49,7 +49,7 @@ export class ExtensionUtils {
         let dirName: string;
 
         if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES];
+            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES].fileName;
             dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
         } else {
             throw new Error(`Unable to get extension storage prompt configuration file item uri. Unknown file type: ${fileType}`);
@@ -65,7 +65,7 @@ export class ExtensionUtils {
         let dirName: string;
 
         if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES];
+            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES].fileName;
             dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
         } else {
             throw new Error(`Unable to get extension storage prompt out file item uri. Unknown file type: ${fileType}`);
@@ -79,7 +79,7 @@ export class ExtensionUtils {
         let fileName: string;
         
         if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES) {
-            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES];
+            fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES].fileName;
         } else {
             throw new Error(`Unable to get extension storage file default content. Unknown file type: ${fileType}`);
         }

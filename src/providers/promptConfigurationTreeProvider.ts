@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
+import { BaseLoggable } from '../shared/base/baseLoggable';
 import { EXTENSION_STORAGE } from '../constants/extensionStorage';
-import { ExtensionUtils } from '../utils/extensionUtils';
-import { ExtensionConfigurationManager } from '../managers/extensionConfigurationManager';
-import { BaseProvider } from './baseProvider';
+import { ExtensionUtils } from '../shared/utility/extensionUtils';
+import { ExtensionStateManager } from '../managers/extensionStateManager';
 
-export class PromptConfigurationTreeProvider extends BaseProvider implements vscode.TreeDataProvider<ConfigurationItem> {
+export class PromptConfigurationTreeProvider extends BaseLoggable implements vscode.TreeDataProvider<ConfigurationItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ConfigurationItem | undefined | null | void> = new vscode.EventEmitter<ConfigurationItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ConfigurationItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private configManager: ExtensionConfigurationManager
+        private configManager: ExtensionStateManager
     ) {
         super(logName, outputChannel);
 

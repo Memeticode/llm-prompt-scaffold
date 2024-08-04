@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
+import { BaseLoggable } from '../shared/base/baseLoggable';
 import { EXTENSION_STORAGE } from '../constants/extensionStorage';
-import { ExtensionConfigurationManager } from '../managers/extensionConfigurationManager';
-import { BaseProvider } from './baseProvider';
-import { ExtensionUtils } from '../utils/extensionUtils';
-import { FileSystemUtils } from '../utils/fileSystemUtils';
+import { ExtensionStateManager } from '../managers/extensionStateManager';
+import { ExtensionUtils } from '../shared/utility/extensionUtils';
+import { FileSystemUtils } from '../shared/utility/fileSystemUtils';
 
-export class PromptGenerationTreeProvider extends BaseProvider implements vscode.TreeDataProvider<PromptGenerationItem> {
+export class PromptGenerationTreeProvider extends BaseLoggable implements vscode.TreeDataProvider<PromptGenerationItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<PromptGenerationItem | undefined | null | void> = new vscode.EventEmitter<PromptGenerationItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<PromptGenerationItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private configManager: ExtensionConfigurationManager
+        private configManager: ExtensionStateManager
     ) {
         super(logName, outputChannel);
         this.configManager.onActiveWorkspaceChanged(() => this.refresh());

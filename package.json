@@ -71,12 +71,12 @@
       {
         "command": "llmPromptScaffold.setDefaultPromptConfiguration",
         "title": "LLM Prompt Scaffold: Set Default Prompt Configuration",
-        "description": "Sets all prompt configuration items to their default values in the active workspace (will clear existing configuration)"
+        "description": "Sets all prompt configuration items to their default values (applies to active workspace folder, will clear existing configuration)"
       },
       {
         "command": "llmPromptScaffold.setDefaultPromptConfigurationItem",
         "title": "LLM Prompt Scaffold: Set Default Prompt Configuration Item",
-        "description": "Sets a specific prompt configuration item to its default value in the active workspace (will clear existing configuration)"
+        "description": "Sets a specific prompt configuration item to its default value (applies to active workspace folder, will clear existing configuration)"
       },
       {
         "command": "llmPromptScaffold.openPromptConfigurationItem",
@@ -86,32 +86,32 @@
       {
         "command": "llmPromptScaffold.generatePrompts",
         "title": "LLM Prompt Scaffold: Generate Prompts",
-        "description": "Loads or reloads all generated prompt items in the active workspace (will clear existing generated prompts)"
+        "description": "Loads or reloads all generated prompt items (applies to active workspace folder, will clear existing generated prompts)"
       },
       {
         "command": "llmPromptScaffold.generatePromptItem",
         "title": "LLM Prompt Scaffold: Generate Prompt Item",
-        "description": "Loads or reloads a specific generated prompt item in the active workspace (will clear existing generated prompt item)"
+        "description": "Loads or reloads a specific generated prompt item (applies to active workspace folder, will clear existing generated prompt item)"
       },
       {
         "command": "llmPromptScaffold.openGeneratedPromptItem",
         "title": "LLM Prompt Scaffold: Open Generated Prompt Item",
-        "description": "Opens specified generated prompt item file in the active workspace in the editor"
+        "description": "Opens specified generated prompt item file in the editor (from active workspace folder)"
       },
       {
         "command": "llmPromptScaffold.copyGeneratedPromptItemToClipboard",
         "title": "LLM Prompt Scaffold: Copy Generated Prompt Item to Clipboard",
-        "description": "Copies the content of the specified generated prompt item to the clipboard"
+        "description": "Copies the content of the specified generated prompt item to the clipboard (from active workspace folder)"
       },
       {
         "command": "llmPromptScaffold.openGeneratedPromptItemFileInFileManager",
         "title": "LLM Prompt Scaffold: Open Generated Prompt Item File in File Manager",
-        "description": "Opens specified generated prompt item file in the active workspace in the system file manager"
+        "description": "Opens specified generated prompt item file in the system file manager (from active workspace folder)"
       },
       {
         "command": "llmPromptScaffold.openGeneratedPromptFolderInFileManager",
         "title": "LLM Prompt Scaffold: Open Generated Prompt Folder in File Manager",
-        "description": "Opens folder with generated prompt item files for active workspace in the system file manager"
+        "description": "Opens folder with generated prompt item files in the system file manager (from active workspace folder)"
       }
     ],
     "viewsContainers": {
@@ -126,19 +126,19 @@
     "views": {
       "project-sidebar": [
         {
-          "id": "workspaceSelectorView",
+          "id": "llmPromptScaffold.workspaceSelectorView",
           "name": "Active Workspace Folder",
           "description": "For multi-folder workspaces, select a single project folder for the extension to work with.",
           "type": "tree"
         },
         {
-          "id": "promptConfigurationView",
+          "id": "llmPromptScaffold.promptConfigurationView",
           "name": "Prompt Configuration",
           "description": "View and edit prompt configuration information",
           "type": "tree"
         },
         {
-          "id": "promptGenerationView",
+          "id": "llmPromptScaffold.promptGenerationView",
           "name": "Prompt Generation",
           "type": "tree",
           "description": "Generate, edit, and export prompt files suitable for loading to an LLM"

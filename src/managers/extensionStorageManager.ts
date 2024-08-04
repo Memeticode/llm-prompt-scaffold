@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { BaseManager } from './baseManager';
+import { BaseLoggable } from '../shared/base/baseLoggable';
 import { EXTENSION_STORAGE } from '../constants/extensionStorage';
-import { ExtensionUtils } from '../utils/extensionUtils';
-import { FileSystemUtils } from '../utils/fileSystemUtils';
-import { FileFilter } from '../utils/fileFilters';
+import { ExtensionUtils } from '../shared/utility/extensionUtils';
+import { FileSystemUtils } from '../shared/utility/fileSystemUtils';
+import { FileFilter } from '../shared/utility/fileFilters';
 
-export class ExtensionStorageManager extends BaseManager {
+export class ExtensionStorageManager extends BaseLoggable {
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel
@@ -137,7 +137,7 @@ export class ExtensionStorageManager extends BaseManager {
         await FileSystemUtils.createDirectoryIfNotExistsAsync(configFolderUri);
 
         for (const [fileKey, fileName] of Object.entries(EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES)) {
-            const fileUri = vscode.Uri.joinPath(configFolderUri, fileName);
+            const fileUri = vscode.Uri.joinPath(configFolderUri, fileName.fileName);
             if (!(await FileSystemUtils.fileExistsAsync(fileUri))) {
                 const defaultContent = await ExtensionUtils.getExtensionStoragePromptConfigFileDefaultContent(fileKey as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES);
                 await FileSystemUtils.writeFileAsync(fileUri, defaultContent);

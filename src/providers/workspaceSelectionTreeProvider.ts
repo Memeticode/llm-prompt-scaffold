@@ -1,15 +1,16 @@
 import * as vscode from 'vscode';
-import { ExtensionConfigurationManager } from '../managers/extensionConfigurationManager';
-import { BaseProvider } from './baseProvider';
+import { BaseLoggable } from '../shared/base/baseLoggable';
+import { ExtensionStateManager } from '../managers/extensionStateManager';
 
-export class WorkspaceSelectionTreeProvider extends BaseProvider implements vscode.TreeDataProvider<WorkspaceTreeItem> {
+
+export class WorkspaceSelectionTreeProvider extends BaseLoggable implements vscode.TreeDataProvider<WorkspaceTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<WorkspaceTreeItem | undefined | null | void> = new vscode.EventEmitter<WorkspaceTreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<WorkspaceTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private configManager: ExtensionConfigurationManager
+        private configManager: ExtensionStateManager
     ) {
         super(logName, outputChannel);
         vscode.workspace.onDidChangeWorkspaceFolders(() => this.refresh());

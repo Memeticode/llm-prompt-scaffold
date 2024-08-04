@@ -2,15 +2,16 @@ import * as vscode from 'vscode';
 import ignore from 'ignore';
 
 export interface FileFilter {
-    shouldInclude(uri: vscode.Uri): Promise<boolean>;
+    shouldIncludeAsync(uri: vscode.Uri): Promise<boolean>;
 }
+
 
 export class CompositeFileFilter implements FileFilter {
     constructor(private filters: FileFilter[]) {}
 
-    async shouldInclude(uri: vscode.Uri): Promise<boolean> {
+    async shouldIncludeAsync(uri: vscode.Uri): Promise<boolean> {
         for (const filter of this.filters) {
-            if (!(await filter.shouldInclude(uri))) {
+            if (!(await filter.shouldIncludeAsync(uri))) {
                 return false;
             }
         }
@@ -39,7 +40,7 @@ export class GitignoreParser implements FileFilter {
         }
     }
 
-    async shouldInclude(uri: vscode.Uri): Promise<boolean> {
+    async shouldIncludeAsync(uri: vscode.Uri): Promise<boolean> {
         const relativePath = vscode.workspace.asRelativePath(uri, false);
         return !this.ig.ignores(relativePath);
     }
@@ -51,9 +52,9 @@ export class IncludeExcludeGitignoreParser implements FileFilter {
         private excludeParser: GitignoreParser
     ) {}
 
-    async shouldInclude(uri: vscode.Uri): Promise<boolean> {
-        return (await this.includeParser.shouldInclude(uri)) 
-            || !(await this.excludeParser.shouldInclude(uri));
+    async shouldIncludeAsync(uri: vscode.Uri): Promise<boolean> {
+        return (await this.includeParser.shouldIncludeAsync(uri)) 
+            || !(await this.excludeParser.shouldIncludeAsync(uri));
     }
 
     static async create(workspaceRoot: vscode.Uri, includeFileName: string, excludeFileName: string): Promise<IncludeExcludeGitignoreParser> {
@@ -67,22 +68,3 @@ export class IncludeExcludeGitignoreParser implements FileFilter {
     }
 }
 
-
-
-// static methods
-// these are for generating file filters for a given workspace
-// may return composite filters
-// export class FileFilterFactory
-// {
-//     static async getWorkspaceFolderGitignoreFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
-//         // implement
-//     }
-    
-//     static async getWorkspaceFileContextStructureFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
-//         // implement
-//     }
-    
-//     static async getWorkspaceFileContextContentFilter(workspaceFolder: vscode.WorkspaceFolder): Promise<FileFilter> {
-//         // implement
-//     }
-// }

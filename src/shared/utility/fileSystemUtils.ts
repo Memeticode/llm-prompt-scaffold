@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FileFilter } from '../utils/fileFilters';
+import { FileFilter } from './fileFilters';
 
 export class FileSystemUtils {
 
@@ -145,7 +145,7 @@ export class FileSystemUtils {
 
     private static async shouldIncludeFile(uri: vscode.Uri, filters: FileFilter[]): Promise<boolean> {
         for (const filter of filters) {
-            if (!(await filter.shouldInclude(uri))) {
+            if (!(await filter.shouldIncludeAsync(uri))) {
                 return false;
             }
         }
