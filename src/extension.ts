@@ -11,7 +11,7 @@ import { ConfigFileKey, GeneratedFileKey } from './shared/extension/types';
 import { PromptConfigItem, GeneratedPromptItem } from './shared/extension/interfaces';
 
 let outputChannel: vscode.OutputChannel;
-let configManager: ExtensionStateManager;
+let stateManager: ExtensionStateManager;
 let storageManager: ExtensionStorageManager;
 let eventManager: ExtensionEventManager;
 let workspaceSelectionTreeProvider: WorkspaceSelectionTreeProvider;
@@ -27,14 +27,14 @@ export async function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine('Prompt Scaffold extension is activating.');
 
         // managers handle extension logic and state management
-        configManager = new ExtensionStateManager("ExtensionConfigurationManager", outputChannel);
-        storageManager = new ExtensionStorageManager("ExtensionStorageManager", outputChannel);
-        eventManager = new ExtensionEventManager("VscodeEventManager", outputChannel, configManager, storageManager);
+        stateManager = new ExtensionStateManager("ExtensionConfigurationManager", outputChannel);
+        storageManager = new ExtensionStorageManager("ExtensionStorageManager", outputChannel, stateManager);
+        eventManager = new ExtensionEventManager("VscodeEventManager", outputChannel, stateManager, storageManager);
         
         // providers provide data to ui components
-        workspaceSelectionTreeProvider = new WorkspaceSelectionTreeProvider("WorkspaceSelectionTreeProvider", outputChannel, configManager);
-        promptConfigProvider = new PromptConfigurationTreeProvider("PromptConfigurationProvider", outputChannel, configManager);
-        promptGenerationProvider = new PromptGenerationTreeProvider("PromptGenerationTreeProvider", outputChannel, configManager);
+        workspaceSelectionTreeProvider = new WorkspaceSelectionTreeProvider("WorkspaceSelectionTreeProvider", outputChannel, stateManager);
+        promptConfigProvider = new PromptConfigurationTreeProvider("PromptConfigurationProvider", outputChannel, stateManager);
+        promptGenerationProvider = new PromptGenerationTreeProvider("PromptGenerationTreeProvider", outputChannel, stateManager);
 
         registerCommands(context);
         registerProviders(context);
@@ -70,15 +70,15 @@ export async function activate(context: vscode.ExtensionContext) {
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('llmPromptScaffold.setActiveWorkspace', (workspaceFolder?: vscode.WorkspaceFolder) => setActiveWorkspace(workspaceFolder)),
-        vscode.commands.registerCommand('llmPromptScaffold.setDefaultPromptConfiguration', setDefaultPromptConfiguration),
-        vscode.commands.registerCommand('llmPromptScaffold.setDefaultPromptConfigurationItem', (item?: PromptConfigItem) => setDefaultPromptConfigurationItem(item)),
-        vscode.commands.registerCommand('llmPromptScaffold.openPromptConfigurationItem', (item?: PromptConfigItem) => openPromptConfigurationItem(item)),
-        vscode.commands.registerCommand('llmPromptScaffold.generatePrompts', generatePrompts),
-        vscode.commands.registerCommand('llmPromptScaffold.generatePromptItem', (item?: GeneratedPromptItem) => generatePromptItem(item)),
-        vscode.commands.registerCommand('llmPromptScaffold.openGeneratedPromptItem', (item?: GeneratedPromptItem) => openGeneratedPromptItem(item)),
-        vscode.commands.registerCommand('llmPromptScaffold.copyGeneratedPromptItemToClipboard', (item?: GeneratedPromptItem) => copyGeneratedPromptItemToClipboard(item)),
-        vscode.commands.registerCommand('llmPromptScaffold.openGeneratedPromptItemFileInFileManager', (item?: GeneratedPromptItem) => openGeneratedPromptItemFileInFileManager(item)),
-        vscode.commands.registerCommand('llmPromptScaffold.openGeneratedPromptFolderInFileManager', openGeneratedPromptFolderInFileManager)
+        // vscode.commands.registerCommand('llmPromptScaffold.setDefaultPromptConfiguration', setDefaultPromptConfiguration),
+        // vscode.commands.registerCommand('llmPromptScaffold.setDefaultPromptConfigurationItem', (item?: PromptConfigItem) => setDefaultPromptConfigurationItem(item)),
+        // vscode.commands.registerCommand('llmPromptScaffold.openPromptConfigurationItem', (item?: PromptConfigItem) => openPromptConfigurationItem(item)),
+        // vscode.commands.registerCommand('llmPromptScaffold.generatePrompts', generatePrompts),
+        // vscode.commands.registerCommand('llmPromptScaffold.generatePromptItem', (item?: GeneratedPromptItem) => generatePromptItem(item)),
+        // vscode.commands.registerCommand('llmPromptScaffold.openGeneratedPromptItem', (item?: GeneratedPromptItem) => openGeneratedPromptItem(item)),
+        // vscode.commands.registerCommand('llmPromptScaffold.copyGeneratedPromptItemToClipboard', (item?: GeneratedPromptItem) => copyGeneratedPromptItemToClipboard(item)),
+        // vscode.commands.registerCommand('llmPromptScaffold.openGeneratedPromptItemFileInFileManager', (item?: GeneratedPromptItem) => openGeneratedPromptItemFileInFileManager(item)),
+        // vscode.commands.registerCommand('llmPromptScaffold.openGeneratedPromptFolderInFileManager', openGeneratedPromptFolderInFileManager)
     );
 }
 
@@ -93,7 +93,7 @@ function registerProviders(context: vscode.ExtensionContext) {
 export function deactivate() {
     outputChannel.appendLine('LLM Prompt Scaffold extension is deactivating.');
     try {
-        if (configManager) { configManager.dispose(); }
+        if (stateManager) { stateManager.dispose(); }
         if (storageManager) { storageManager.dispose(); }
         if (eventManager) { eventManager.dispose(); }
         if (workspaceSelectionTreeProvider) { workspaceSelectionTreeProvider.dispose(); }
@@ -112,7 +112,7 @@ export function deactivate() {
 async function setActiveWorkspace(workspaceFolder?: vscode.WorkspaceFolder) {
     try {
         if (workspaceFolder) {
-            await configManager.setActiveWorkspace(workspaceFolder);
+            await stateManager.setActiveWorkspace(workspaceFolder);
             vscode.window.showInformationMessage(`Active workspace set to: ${workspaceFolder.name}`);
         } else {
             await workspaceSelectionTreeProvider.showWorkspaceQuickPick();
@@ -121,6 +121,8 @@ async function setActiveWorkspace(workspaceFolder?: vscode.WorkspaceFolder) {
         vscode.window.showErrorMessage(`Failed to set active workspace: ${error}`);
     }
 }
+
+/*
 async function setDefaultPromptConfiguration() {
     try {
         const confirmation = await vscode.window.showWarningMessage(
@@ -302,3 +304,4 @@ async function openGeneratedPromptFolderInFileManager() {
     }
 }
 
+*/

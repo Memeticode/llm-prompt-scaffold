@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { BaseLoggable } from '../shared/base/baseLoggable';
-//import { EXTENSION_STORAGE } from '../constants/extensionStorage';
+import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 
 export class ExtensionStateManager extends BaseLoggable {
     private activeWorkspace: vscode.WorkspaceFolder | undefined;
@@ -31,25 +31,25 @@ export class ExtensionStateManager extends BaseLoggable {
         }
     }
 
-    // getStorageFolderName(workspace: vscode.WorkspaceFolder): string {
-    //     const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri);
-    //     const folderName = config.get<string>(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
-    //     this.logMessage(`Storage folder name for workspace ${workspace.name}: ${folderName}`);
-    //     return folderName;
-    // }
+    getStorageFolderName(workspace: vscode.WorkspaceFolder): string {
+        const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri);
+        const folderName = config.get<string>(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
+        this.logMessage(`Storage folder name for workspace ${workspace.name}: ${folderName}`);
+        return folderName;
+    }
 
-    // async setStorageFolderName(workspace: vscode.WorkspaceFolder, name: string): Promise<void> {
-    //     this.logMessage(`Setting storage folder name for workspace ${workspace.name} to: ${name}`);
-    //     try {
-    //         const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri);
-    //         await config.update(EXTENSION_STORAGE.CONFIG_KEY, name, vscode.ConfigurationTarget.WorkspaceFolder);
-    //         this.logMessage(`Successfully set storage folder name for workspace ${workspace.name} to: ${name}`);
-    //     } catch (error) {
-    //         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    //         this.logError(`Failed to set storage folder name for workspace ${workspace.name}: ${errorMessage}`);
-    //         throw error;
-    //     }
-    // }
+    async setStorageFolderName(workspace: vscode.WorkspaceFolder, name: string): Promise<void> {
+        this.logMessage(`Setting storage folder name for workspace ${workspace.name} to: ${name}`);
+        try {
+            const config = vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri);
+            await config.update(EXTENSION_STORAGE.CONFIG_KEY, name, vscode.ConfigurationTarget.WorkspaceFolder);
+            this.logMessage(`Successfully set storage folder name for workspace ${workspace.name} to: ${name}`);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            this.logError(`Failed to set storage folder name for workspace ${workspace.name}: ${errorMessage}`);
+            throw error;
+        }
+    }
 
     dispose(): void {
         this._onActiveWorkspaceChanged.dispose();
