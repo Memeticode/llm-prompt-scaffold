@@ -1,6 +1,6 @@
 
 import * as vscode from 'vscode';
-import { FileSystemUtils } from '../../utility/fileSystemUtils';
+import { FileSystemUtils } from '../../shared/utility/fileSystemUtils';
 import { FileFilterHelper } from './fileFilterHelper';
 import { FileContentHelper } from './fileContentHelper';
 

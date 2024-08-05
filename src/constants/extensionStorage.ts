@@ -7,11 +7,12 @@
 
 export const EXTENSION_STORAGE = {
     EXTENSION_ID: "memeticode.llm-prompt-scaffold",
-    CONFIG_KEY: 'extensionStorageDirectory',
+    EXTENSION_NAME: "llm-prompt-scaffold",
+    WORKSPACE_STORAGE_KEY: 'llm-prompt-scaffold-extension-workspace-storage-folders',
     STORAGE_FOLDER_NAME_FALLBACK: '.llm-prompt-scaffold',
     STRUCTURE: {
         PROMPT_CONFIG_DIR: {
-            NAME: 'config',
+            NAME: 'prompt-config',
             FILES: {
                 SYSTEM_PROMPT: {
                     fileName: 'project-system-prompt.txt',
@@ -57,8 +58,8 @@ export const EXTENSION_STORAGE = {
                 }
             }
         },
-        PROMPT_OUT_DIR: {
-            NAME: 'out',
+        PROMPT_CONTEXT_DIR: {
+            NAME: 'prompt-context',
             FILES: {
                 SYSTEM_PROMPT: {
                     fileName: 'out-system-prompt.txt',

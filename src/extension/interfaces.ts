@@ -1,6 +1,6 @@
 // src/interfaces.ts
 import { Uri } from 'vscode';
-import { ConfigFileKey, GeneratedFileKey } from './types';
+import { PromptConfigFileKey, PromptContextFileKey } from './types';
 
 export interface ExtensionFileItemInfo {
     fileName: string;
@@ -12,12 +12,12 @@ export interface ConfigFileInfo extends ExtensionFileItemInfo {}
 export interface GeneratedFileInfo extends ExtensionFileItemInfo {}
 
 export interface PromptConfigItem {
-    key: ConfigFileKey;
+    key: PromptConfigFileKey;
     info: ConfigFileInfo;
     uri: Uri;
 }
 export interface GeneratedPromptItem {
-    key: GeneratedFileKey;
+    key: PromptContextFileKey;
     info: GeneratedFileInfo;
     uri: Uri;
 }

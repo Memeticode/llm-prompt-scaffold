@@ -45,8 +45,8 @@ export class PromptGenerationTreeProvider extends BaseLoggable implements vscode
     }
     
     private async getPromptOutFilesAsync(workspace: vscode.WorkspaceFolder): Promise<PromptGenerationItem[]> {
-        const items = await Promise.all(Object.entries(EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES).map(async ([key, fileName]) => {
-            const fileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES);
+        const items = await Promise.all(Object.entries(EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES).map(async ([key, fileName]) => {
+            const fileUri = ExtensionUtils.getExtensionStoragePromptOutFileUri(workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES);
             const fileSize = await FileSystemUtils.getFileSizeFormattedAsync(fileUri);
             return new PromptGenerationItem(
                 key,
@@ -55,12 +55,12 @@ export class PromptGenerationTreeProvider extends BaseLoggable implements vscode
                 {
                     command: 'llmPromptScaffold.openPromptOutFileInEditor',
                     title: 'Open Prompt Out File',
-                    arguments: [workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES]
+                    arguments: [workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES]
                 },
                 [{
                     command: 'llmPromptScaffold.regenerateAndOpenPromptOutFileInEditor',
                     title: 'Regenerate',
-                    arguments: [workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_OUT_DIR.FILES]
+                    arguments: [workspace, key as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES]
                 }],
                 fileSize
             );

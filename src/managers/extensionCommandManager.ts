@@ -1,20 +1,20 @@
 import * as vscode from 'vscode';
 import { BaseCommandQueue, ClearCommandQueueStrategy } from '../shared/base/baseCommandQueue';
-import { ExtensionStateManager } from './extensionStateManager';
-import { ExtensionStorageManager } from '../managers/extensionStorageManager';
+import { IExtensionStateManager } from './extensionStateManager';
+import { IExtensionStorageManager } from '../managers/extensionStorageManager';
 
-export class CommandManager extends BaseCommandQueue {
+export class ExtensionCommandManager extends BaseCommandQueue {
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private configManager: ExtensionStateManager,
-        private storageManager: ExtensionStorageManager,
+        private configManager: IExtensionStateManager,
+        private storageManager: IExtensionStorageManager,
         maxHistoryLength: number = 100
     ) {
         super(logName, outputChannel, maxHistoryLength);
     }
 
-    async setActiveWorkspace(workspaceFolder?: vscode.WorkspaceFolder): Promise<void> {
+    async setActiveWorkspaceAsync(workspaceFolder?: vscode.WorkspaceFolder): Promise<void> {
         return this.queueCommand(async (cancellationToken: vscode.CancellationToken) => {
             if (!workspaceFolder) {
                 const workspaceFolders = vscode.workspace.workspaceFolders;

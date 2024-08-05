@@ -1,7 +1,7 @@
 
 import * as vscode from 'vscode';
-import { FileFilter, IncludeExcludeGitignoreParser } from '../../utility/fileFilters';
-import { EXTENSION_STORAGE } from '../../../constants/extensionStorage';
+import { FileFilter, IncludeExcludeGitignoreParser } from '../../shared/utility/fileFilters';
+import { EXTENSION_STORAGE } from '../../constants/extensionStorage';
 
 export class FileFilterHelper {
     static async createStructureFilter(workspace: vscode.WorkspaceFolder): Promise<FileFilter> {

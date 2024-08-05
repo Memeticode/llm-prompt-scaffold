@@ -1,7 +1,7 @@
 
 import * as vscode from 'vscode';
-import { FileFilter } from '../../utility/fileFilters';
-import { FileSystemUtils } from '../../utility/fileSystemUtils';
+import { FileFilter } from '../../shared/utility/fileFilters';
+import { FileSystemUtils } from '../../shared/utility/fileSystemUtils';
 
 export class FileContentHelper {
     

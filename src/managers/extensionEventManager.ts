@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
 import { BaseLoggable } from '../shared/base/baseLoggable';
 import { EXTENSION_STORAGE } from '../constants/extensionStorage';
-import { ExtensionStateManager } from './extensionStateManager';
+import { IExtensionStateManager } from './extensionStateManager';
 import { ExtensionStorageManager } from './extensionStorageManager';
 
 export class ExtensionEventManager extends BaseLoggable {
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private configManager: ExtensionStateManager,
+        private stateManager: IExtensionStateManager,
         private storageManager: ExtensionStorageManager
     ) {
         super(logName, outputChannel);
@@ -17,32 +17,59 @@ export class ExtensionEventManager extends BaseLoggable {
     registerEventListeners(): void {
         this.logMessage('Registering event listeners');
         
-        //vscode.workspace.onDidChangeWorkspaceFolders(this.handleWorkspaceFoldersChanged.bind(this));
-        //vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChanged.bind(this));
+        // editor event listeners
+        this.addDisposable(
+            vscode.workspace.onDidChangeWorkspaceFolders(this.handleWorkspaceFoldersChanged.bind(this))
+        );
+
+
+        
+        // extension event listeners
+        
+        // this.addDisposable(
+        //     vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChanged.bind(this))
+        // );
+
+        // Listen for storage folder name changes from ExtensionStateManager
+        // this.addDisposable(
+        //     this.stateManager.onWorkspaceStorageFolderNameChanged(this.handleStorageFolderNameChanged.bind(this))
+        // );
         
         this.logMessage('Event listeners registered');
     }
-
     private async handleWorkspaceFoldersChanged(event: vscode.WorkspaceFoldersChangeEvent): Promise<void> {
         this.logMessage(`Workspace folders changed: ${event.added.length} added, ${event.removed.length} removed`);
-
+    
         for (const folder of event.added) {
             this.logMessage(`Initializing storage for added workspace: ${folder.name}`);
-            await this.storageManager.initializeStorageForWorkspaceAsync(folder);
+            // add to state, then add storage folders
+            await this.stateManager.initializeWorkspaceStorageFolderNameAsync(folder);
+            await this.storageManager.initializeWorkspaceStorageAsync(folder);
         }
-
+    
+        let activeWorkspaceRemoved = false;
+        const activeWorkspace = this.stateManager.getActiveWorkspace();
         for (const folder of event.removed) {
             this.logMessage(`Workspace removed: ${folder.name}`);
-            await this.storageManager.cleanupStorageForWorkspaceAsync(folder);
+            if (folder === activeWorkspace) {
+                activeWorkspaceRemoved = true;
+            }
+            // cleanup storage folders, state
+            await this.storageManager.cleanupWorkspaceStorageAsync(folder);
+            this.stateManager.cleanupWorkspaceStorageFolderName(folder);            
+        }
+    
+        if (activeWorkspaceRemoved) {
+            this.stateManager.initializeActiveWorkspace();
         }
     }
 
     // private async handleConfigurationChanged(event: vscode.ConfigurationChangeEvent): Promise<void> {
-    //     if (event.affectsConfiguration('llmPromptScaffold.extensionStorageDirectory')) {
+    //     if (event.affectsConfiguration(`${EXTENSION_STORAGE.EXTENSION_ID}.${EXTENSION_STORAGE.CONFIG_KEY}`)) {
     //         this.logMessage('Extension storage directory configuration changed');
             
     //         for (const workspace of vscode.workspace.workspaceFolders || []) {
-    //             if (event.affectsConfiguration('llmPromptScaffold.extensionStorageDirectory', workspace.uri)) {
+    //             if (event.affectsConfiguration(`${EXTENSION_STORAGE.EXTENSION_ID}.${EXTENSION_STORAGE.CONFIG_KEY}`, workspace.uri)) {
     //                 await this.handleStorageDirectoryChangeForWorkspace(workspace);
     //             }
     //         }
@@ -50,26 +77,14 @@ export class ExtensionEventManager extends BaseLoggable {
     // }
 
     // private async handleStorageDirectoryChangeForWorkspace(workspace: vscode.WorkspaceFolder): Promise<void> {
-    //     const oldName = this.configManager.getStorageFolderName(workspace);
-    //     const newName = vscode.workspace.getConfiguration('llmPromptScaffold', workspace.uri)
-    //         .get(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
-
-    //     if (oldName !== newName) {
-    //         this.logMessage(`Storage directory name changed for workspace ${workspace.name}: ${oldName} -> ${newName}`);
-    //         await this.storageManager.handleStorageFolderNameChange(workspace, oldName, newName);
-    //     } else {
-    //         this.logMessage(`No change in storage directory name for workspace ${workspace.name}`);
-    //     }
+    //     const config = vscode.workspace.getConfiguration(EXTENSION_STORAGE.EXTENSION_ID, workspace.uri);
+    //     const newName = config.get<string>(EXTENSION_STORAGE.CONFIG_KEY, EXTENSION_STORAGE.STORAGE_FOLDER_NAME_FALLBACK);
+    //     await this.stateManager.setStorageFolderName(workspace, newName);
     // }
 
-    async initializeForExistingWorkspaces(): Promise<void> {
-        this.logMessage('Initializing storage for existing workspaces');
-        
-        const workspaces = vscode.workspace.workspaceFolders || [];
-        for (const workspace of workspaces) {
-            await this.storageManager.initializeStorageForWorkspaceAsync(workspace);
-        }
-        
-        this.logMessage('Storage initialized for all existing workspaces');
-    }
+    // private async handleStorageFolderNameChanged(event: {workspace: vscode.WorkspaceFolder, oldName: string, newName: string}): Promise<void> {
+    //     this.logMessage(`Storage directory name changed for workspace ${event.workspace.name}: ${event.oldName} -> ${event.newName}`);
+    //     await this.storageManager.updateWorkspaceStorageFolderAsync(event.workspace, event.oldName, event.newName);
+    // }
+
 }
