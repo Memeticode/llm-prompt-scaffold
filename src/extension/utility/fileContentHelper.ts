@@ -1,17 +1,17 @@
 
 import * as vscode from 'vscode';
-import { FileFilter } from '../../shared/utility/fileFilters';
+import { IFileFlagger } from '../../shared/utility/fileFlaggers';
 import { FileSystemUtils } from '../../shared/utility/fileSystemUtils';
 
 export class FileContentHelper {
     
-    static async getFileStructure(rootUri: vscode.Uri, filter: FileFilter): Promise<string> {
+    static async getFileStructure(rootUri: vscode.Uri, filter: IFileFlagger): Promise<string> {
         const structure: string[] = [];
         await this.buildFileStructure(rootUri, '', filter, structure);
         return structure.join('\n');
     }
 
-    private static async buildFileStructure(uri: vscode.Uri, relativePath: string, filter: FileFilter, structure: string[]): Promise<void> {
+    private static async buildFileStructure(uri: vscode.Uri, relativePath: string, filter: IFileFlagger, structure: string[]): Promise<void> {
         const entries = await FileSystemUtils.getDirectoryContentsAsync(uri);
         for (const [name, type] of entries) {
             const newPath = relativePath ? `${relativePath}/${name}` : name;
@@ -25,13 +25,13 @@ export class FileContentHelper {
         }
     }
 
-    static async getFileContent(rootUri: vscode.Uri, structureFilter: FileFilter, contentFilter: FileFilter): Promise<string> {
+    static async getFileContent(rootUri: vscode.Uri, structureFilter: IFileFlagger, contentFilter: IFileFlagger): Promise<string> {
         const content: string[] = [];
         await this.buildFileContent(rootUri, '', structureFilter, contentFilter, content);
         return content.join('\n\n');
     }
 
-    private static async buildFileContent(uri: vscode.Uri, relativePath: string, structureFilter: FileFilter, contentFilter: FileFilter, content: string[]): Promise<void> {
+    private static async buildFileContent(uri: vscode.Uri, relativePath: string, structureFilter: IFileFlagger, contentFilter: IFileFlagger, content: string[]): Promise<void> {
         const entries = await FileSystemUtils.getDirectoryContentsAsync(uri);
         for (const [name, type] of entries) {
             const newPath = relativePath ? `${relativePath}/${name}` : name;

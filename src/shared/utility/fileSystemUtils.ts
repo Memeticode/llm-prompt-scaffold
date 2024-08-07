@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FileFilter } from './fileFilters';
+import { IFileFlagger } from './fileFlaggers';
 
 export class FileSystemUtils {
 
@@ -124,7 +124,7 @@ export class FileSystemUtils {
         }
     }
 
-    static async getDirectoryContentsAsync(uri: vscode.Uri, filters?: FileFilter | FileFilter[]): Promise<[string, vscode.FileType][]> {
+    static async getDirectoryContentsAsync(uri: vscode.Uri, filters?: IFileFlagger | IFileFlagger[]): Promise<[string, vscode.FileType][]> {
         const entries = await vscode.workspace.fs.readDirectory(uri);
         if (!filters) {
             return entries;
@@ -143,7 +143,7 @@ export class FileSystemUtils {
         return filteredEntries;
     }
 
-    private static async shouldIncludeFile(uri: vscode.Uri, filters: FileFilter[]): Promise<boolean> {
+    private static async shouldIncludeFile(uri: vscode.Uri, filters: IFileFlagger[]): Promise<boolean> {
         for (const filter of filters) {
             if (!(await filter.shouldIncludeAsync(uri))) {
                 return false;
