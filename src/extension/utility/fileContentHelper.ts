@@ -16,7 +16,7 @@ export class FileContentHelper {
         for (const [name, type] of entries) {
             const newPath = relativePath ? `${relativePath}/${name}` : name;
             const fullUri = vscode.Uri.joinPath(uri, name);
-            if (await filter.shouldIncludeAsync(fullUri)) {
+            if (await filter.isFlaggedAsync(fullUri)) {
                 structure.push(newPath);
                 if (type === vscode.FileType.Directory) {
                     await this.buildFileStructure(fullUri, newPath, filter, structure);
@@ -36,8 +36,8 @@ export class FileContentHelper {
         for (const [name, type] of entries) {
             const newPath = relativePath ? `${relativePath}/${name}` : name;
             const fullUri = vscode.Uri.joinPath(uri, name);
-            if (await structureFilter.shouldIncludeAsync(fullUri)) {
-                if (type === vscode.FileType.File && await contentFilter.shouldIncludeAsync(fullUri)) {
+            if (await structureFilter.isFlaggedAsync(fullUri)) {
+                if (type === vscode.FileType.File && await contentFilter.isFlaggedAsync(fullUri)) {
                     const fileContent = await FileSystemUtils.readFileAsync(fullUri);
                     content.push(`File: ${newPath}\n\n${fileContent}`);
                 } else if (type === vscode.FileType.Directory) {

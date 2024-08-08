@@ -85,20 +85,14 @@ export class FileFlaggerFactory {
     static async createGitIgnoreFlagger(workspaceFolder: vscode.WorkspaceFolder): Promise<IFileFlagger> {
         const gitignoreUri = vscode.Uri.joinPath(workspaceFolder.uri, '.gitignore');
         const flagger = new GitIgnoreFlagger(gitignoreUri);
-        await flagger.loadRules();
+        await flagger.loadRulesAsync();
         return flagger;
     }
 
     static async createVscodeSettingsFlagger(workspaceFolder: vscode.WorkspaceFolder): Promise<IFileFlagger> {
         const flagger = new VscodeSettingsFlagger(workspaceFolder);
-        await flagger.loadSettings();
+        await flagger.loadRulesAsync();
         return flagger;
-    }
-
-    static createExtensionStorageFlagger(workspaceFolder: vscode.WorkspaceFolder, extensionStoragePath: string): IFileFlagger {
-        return {
-            isFlaggedAsync: async (uri: vscode.Uri) => uri.fsPath.startsWith(path.join(workspaceFolder.uri.fsPath, extensionStoragePath))
-        };
     }
 
     static async createStructureFlagger(workspaceFolder: vscode.WorkspaceFolder, includeFileName: string, excludeFileName: string): Promise<IFileFlagger> {
@@ -108,11 +102,10 @@ export class FileFlaggerFactory {
         const includeFlagger = new GitIgnoreFlagger(includeUri);
         const excludeFlagger = new GitIgnoreFlagger(excludeUri);
 
-        await Promise.all([includeFlagger.loadRules(), excludeFlagger.loadRules()]);
+        await Promise.all([includeFlagger.loadRulesAsync(), excludeFlagger.loadRulesAsync()]);
 
         return new ExcludeIncludeFlagger(excludeFlagger, includeFlagger);
     }
-
 
     static async createExcludeIncludeFlagger(
         workspaceFolder: vscode.WorkspaceFolder, 

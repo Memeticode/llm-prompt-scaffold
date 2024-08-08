@@ -145,7 +145,7 @@ export class FileSystemUtils {
 
     private static async shouldIncludeFile(uri: vscode.Uri, filters: IFileFlagger[]): Promise<boolean> {
         for (const filter of filters) {
-            if (!(await filter.shouldIncludeAsync(uri))) {
+            if (!(await filter.isFlaggedAsync(uri))) {
                 return false;
             }
         }

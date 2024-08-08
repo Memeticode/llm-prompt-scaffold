@@ -27,17 +27,19 @@ export async function activate(context: vscode.ExtensionContext) {
         // create and store the output channel
         outputChannel = vscode.window.createOutputChannel('LLM Prompt Scaffold');
         context.subscriptions.push(outputChannel);
+
         outputChannel.appendLine('Prompt Scaffold extension is activating.');
 
-        // managers handle extension logic and state management
-        stateManager = new ExtensionStateManager("ExtensionConfigurationManager", outputChannel, context);
-        storageManager = new ExtensionStorageManager("ExtensionStorageManager", outputChannel, stateManager);
-        eventManager = new ExtensionEventManager("VscodeEventManager", outputChannel, stateManager, storageManager);
-        commandManager = new ExtensionCommandManager("CommandManager", outputChannel, stateManager, storageManager, 100);
-        // providers provide data to ui components
+        // initialize managers to handle extension logic and state management
+        stateManager = new ExtensionStateManager("ConfigurationManager", outputChannel, context);
+        storageManager = new ExtensionStorageManager("StorageManager", outputChannel, stateManager);
+        eventManager = new ExtensionEventManager("EventManager", outputChannel, stateManager, storageManager);
+        commandManager = new ExtensionCommandManager("CommandManager", outputChannel, stateManager, storageManager);
+
+        // initialize providers to provide data to ui components
         workspaceSelectionTreeProvider = new WorkspaceSelectionTreeProvider("WorkspaceSelectionTreeProvider", outputChannel, stateManager);
-        promptConfigProvider = new PromptConfigurationTreeProvider("PromptConfigurationProvider", outputChannel, stateManager);
-        promptGenerationProvider = new PromptGenerationTreeProvider("PromptGenerationTreeProvider", outputChannel, stateManager);
+        //promptConfigProvider = new PromptConfigurationTreeProvider("PromptConfigurationProvider", outputChannel, stateManager);
+        //promptGenerationProvider = new PromptGenerationTreeProvider("PromptGenerationTreeProvider", outputChannel, stateManager);
 
         registerCommands(context);
         registerProviders(context);
@@ -86,8 +88,8 @@ function registerCommands(context: vscode.ExtensionContext) {
 function registerProviders(context: vscode.ExtensionContext) {
     context.subscriptions.push(        
         vscode.window.createTreeView('llmPromptScaffold.workspaceSelectorView', { treeDataProvider: workspaceSelectionTreeProvider }),
-        vscode.window.createTreeView('llmPromptScaffold.promptConfigurationView', { treeDataProvider: promptConfigProvider }),
-        vscode.window.createTreeView('llmPromptScaffold.promptGenerationView', { treeDataProvider: promptGenerationProvider })
+        //vscode.window.createTreeView('llmPromptScaffold.promptConfigurationView', { treeDataProvider: promptConfigProvider }),
+        //vscode.window.createTreeView('llmPromptScaffold.promptGenerationView', { treeDataProvider: promptGenerationProvider })
     );
 }
 
