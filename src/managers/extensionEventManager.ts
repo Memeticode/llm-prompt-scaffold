@@ -4,6 +4,8 @@ import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 import { IExtensionStateManager } from './extensionStateManager';
 import { ExtensionStorageManager } from './extensionStorageManager';
 
+// Extension Event Manager listens to external (editor) events and triggers the appropriate extension action as a result. 
+// i.e. creating extension storage folders when workspace folder is added
 export class ExtensionEventManager extends BaseLoggable {
     constructor(
         logName: string,

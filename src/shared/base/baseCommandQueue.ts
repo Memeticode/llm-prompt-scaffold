@@ -44,13 +44,14 @@ export class BaseCommandQueue extends BaseLoggable {
      * @returns A promise that resolves with the result of the command function.
      */
     protected async queueCommand<T>(
+        name: string,
         commandFunc: (cancellationToken: vscode.CancellationToken, ...args: any[]) => Promise<T>,
         includeCommandArgs: boolean = false,
         trackCommandProcessing: boolean = true,
         ...args: any[]
     ): Promise<T> {
         const commandInfo: CommandInfo = {
-            name: commandFunc.name,
+            name: name,
             startTime: Date.now(),
             status: 'queued'
         };

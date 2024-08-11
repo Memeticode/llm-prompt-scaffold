@@ -27,7 +27,7 @@ export class FileSystemUtils {
             if (fileStat) {
                 return this.formatFileSize(fileStat.size);
             }
-            return '-- B';
+            return '-- KB';
         } catch (error) {
             if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
                 return 'DNE';
@@ -37,12 +37,12 @@ export class FileSystemUtils {
     }
 
     private static formatFileSize(bytes: number): string {
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        if (bytes === 0) {
-            return `0 ${units[0]}`;
+        const units = ['KB', 'MB', 'GB', 'TB'];
+        if (bytes < 1024) {
+            return '< 1 KB';
         }
         
-        let size = bytes;
+        let size = bytes / 1024; // Start with KB
         let unitIndex = 0;
     
         while (size >= 1024 && unitIndex < units.length - 1) {
@@ -50,8 +50,8 @@ export class FileSystemUtils {
             unitIndex++;
         }
     
-        // Convert to string with 2 decimal places and remove trailing zeros
-        const sizeStr = size.toFixed(2).replace(/\.?0+$/, '');
+        // Convert to string with 1 decimal place and remove trailing zero
+        const sizeStr = size.toFixed(1).replace(/\.0$/, '');
     
         return `${sizeStr} ${units[unitIndex]}`;
     }

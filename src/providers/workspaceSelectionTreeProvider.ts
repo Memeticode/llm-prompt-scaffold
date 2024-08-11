@@ -10,11 +10,12 @@ export class WorkspaceSelectionTreeProvider extends BaseLoggable implements vsco
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
-        private extensionStateManager: ExtensionStateManager
+        private stateManager: ExtensionStateManager
     ) {
         super(logName, outputChannel);
-        extensionStateManager.onActiveWorkspaceChanged(() => this.refresh());
-        //vscode.workspace.onDidChangeWorkspaceFolders(() => this.refresh());
+        this.addDisposable(
+            this.stateManager.onActiveWorkspaceChanged(() => this.refresh())
+        );
     }
 
     refresh(): void {
@@ -29,7 +30,7 @@ export class WorkspaceSelectionTreeProvider extends BaseLoggable implements vsco
         if (element) {
             return Promise.resolve([]);
         } else {
-            const activeWorkspace = this.extensionStateManager.getActiveWorkspace();
+            const activeWorkspace = this.stateManager.getActiveWorkspace();
             return Promise.resolve(
                 (vscode.workspace.workspaceFolders || []).map(
                     ws => new WorkspaceTreeItem(ws, ws === activeWorkspace, {
@@ -49,7 +50,7 @@ export class WorkspaceSelectionTreeProvider extends BaseLoggable implements vsco
             return;
         }
 
-        const activeWorkspace = this.extensionStateManager.getActiveWorkspace();
+        const activeWorkspace = this.stateManager.getActiveWorkspace();
         const items = workspaces.map(ws => ({
             label: ws.name,
             description: ws === activeWorkspace ? '(Active)' : '',
@@ -67,7 +68,7 @@ export class WorkspaceSelectionTreeProvider extends BaseLoggable implements vsco
 
     async setActiveWorkspace(workspace: vscode.WorkspaceFolder): Promise<void> {
         this.logMessage(`Setting active workspace to: ${workspace.name}`);
-        this.extensionStateManager.setActiveWorkspace(workspace);
+        this.stateManager.setActiveWorkspace(workspace);
         this.refresh();
     }
 }

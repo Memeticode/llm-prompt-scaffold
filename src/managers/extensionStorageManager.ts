@@ -3,9 +3,10 @@ import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 import { PromptConfigFileKey, PromptContextFileKey} from '../extension/types';
 import { BaseLoggable } from '../shared/base/baseLoggable';
 import { FileSystemUtils } from '../shared/utility/fileSystemUtils';
-import { PromptFileGenerator } from '../extension/utility/promptFileGenerator';
+import { PromptContextFileGenerator } from '../extension/utility/promptContextFileGenerator';
 import { EditorWorkspaceUtils } from '../shared/utility/editorWorkspaceUtils';
 import { IExtensionStateManager } from './extensionStateManager';
+import { ExtensionUtils } from '../extension/utility/extensionUtils';
 
 
 export interface IExtensionStorageManager
@@ -24,8 +25,25 @@ export interface IExtensionStorageManager
     generatePromptConfigFileAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptConfigFileKey, overwrite: boolean): Promise<vscode.Uri>
 
     // generate prompt out files
-    generatePromptContextFilesAsync(workspace: vscode.WorkspaceFolder, overwrite: boolean): Promise<void>
-    generatePromptContextFileAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptContextFileKey, overwrite: boolean): Promise<void>
+    generatePromptContextFilesAsync(
+        workspace: vscode.WorkspaceFolder, 
+        overwrite: boolean,
+        progress?: vscode.Progress<{ increment: number; message?: string }>,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<void>;
+
+    generatePromptContextFileAsync(
+        workspace: vscode.WorkspaceFolder, 
+        fileKey: PromptContextFileKey, 
+        overwrite: boolean,
+        progress?: vscode.Progress<{ increment: number; message?: string }>,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<void>;
+
+    onPromptContextItemChanged: vscode.Event<{
+        workspace: vscode.WorkspaceFolder,
+        fileKey: PromptContextFileKey | undefined
+    }>;
 
     // initialization and action logic
     initializeStorageAsync(): Promise<void>
@@ -35,17 +53,26 @@ export interface IExtensionStorageManager
 
     cleanupWorkspaceStorageAsync(workspace: vscode.WorkspaceFolder): Promise<void>
     renameWorkspaceStorageFolderAsync(workspace: vscode.WorkspaceFolder, oldName: string, newName: string): Promise<void>
+
     
 } 
 
+
 // correct class to update, we are going to put the prompt stuff elsewhere
 export class ExtensionStorageManager extends BaseLoggable implements IExtensionStorageManager {
+    private _onPromptContextItemChanged = new vscode.EventEmitter<{
+        workspace: vscode.WorkspaceFolder,
+        fileKey: PromptContextFileKey | undefined
+    }>();
+    readonly onPromptContextItemChanged = this._onPromptContextItemChanged.event;
+    
     constructor(
         logName: string,
         outputChannel: vscode.OutputChannel,
         private extensionStateManager: IExtensionStateManager
     ) {
         super(logName, outputChannel);
+        this.addDisposable(this._onPromptContextItemChanged);
     }
     
     getStorageFolderUri(workspace: vscode.WorkspaceFolder): vscode.Uri { 
@@ -98,12 +125,26 @@ export class ExtensionStorageManager extends BaseLoggable implements IExtensionS
         return fileUri;
     }
     
-    async generatePromptContextFilesAsync(workspace: vscode.WorkspaceFolder, overwrite: boolean): Promise<void> {
+    async generatePromptContextFilesAsync(
+        workspace: vscode.WorkspaceFolder, 
+        overwrite: boolean,
+        progress?: vscode.Progress<{ increment: number; message?: string }>,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<void> {
         this.logMessage(`Generating prompt context files for workspace: ${workspace.name}`);
         try {
-            for (const fileKey of Object.keys(EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES) as Array<PromptContextFileKey>) {
-                await this.generatePromptContextFileAsync(workspace, fileKey, overwrite);
+            const contextItems = Object.keys(EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES) as PromptContextFileKey[];
+            const increment = progress ? (100 / contextItems.length) : 0;
+
+            for (const fileKey of contextItems) {
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new vscode.CancellationError();
+                }
+                await this.generatePromptContextFileAsync(workspace, fileKey, overwrite, progress, cancellationToken);
+                progress?.report({ increment, message: `Generated ${fileKey}` });
             }
+            
+            this._onPromptContextItemChanged.fire({ workspace, fileKey: undefined });
             this.logMessage(`Prompt context files generated successfully for workspace '${workspace.name}'`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -112,34 +153,45 @@ export class ExtensionStorageManager extends BaseLoggable implements IExtensionS
         }
     }
 
-    async generatePromptContextFileAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptContextFileKey, overwrite: boolean): Promise<void> {
+    async generatePromptContextFileAsync(
+        workspace: vscode.WorkspaceFolder, 
+        fileKey: PromptContextFileKey, 
+        overwrite: boolean,
+        progress?: vscode.Progress<{ increment: number; message?: string }>,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<void> {
+        // WE WANT TO CLEAN UP THE LOGIF HERE
         const outFileUri = this.getPromptContextFileUri(workspace, fileKey);
         if (overwrite || !(await FileSystemUtils.fileExistsAsync(outFileUri))) {
-            const configFileUri = this.getPromptConfigFileUri(workspace, fileKey as PromptConfigFileKey);
+            if (cancellationToken?.isCancellationRequested) {
+                throw new vscode.CancellationError();
+            }
 
             switch (fileKey) {
                 case 'SYSTEM_PROMPT':
                 case 'PROJECT_DESCRIPTION':
-                case 'PROJECT_GOALS':
-                    await PromptFileGenerator.generateFromConfig(configFileUri, outFileUri);
+                case 'SESSION_GOALS':
+                    const configSrcUri = ExtensionUtils.getExtensionStoragePromptConfigFileUri(workspace, fileKey);
+                    await PromptContextFileGenerator.writeFromConfigFileAsync(outFileUri, configSrcUri);
                     break;
-                case 'FILE_CONTEXT_STRUCTURE':
-                    await PromptFileGenerator.generateFileStructure(workspace, outFileUri);
+                case 'FILE_STRUCTURE':
+                    await PromptContextFileGenerator.writeFileStructureAsync(outFileUri, workspace);
                     break;
-                case 'FILE_CONTEXT_CONTENT':
-                    await PromptFileGenerator.generateFileContent(workspace, outFileUri);
+                case 'FILE_CONTENT':
+                    await PromptContextFileGenerator.writeFileContentAsync(outFileUri, workspace);
                     break;
                 default:
                     throw new Error(`Unknown file key: ${fileKey}`);
             }
-
+            
+            this._onPromptContextItemChanged.fire({ workspace, fileKey });
             this.logMessage(`Generated prompt context file: ${outFileUri}`);
-        }
-        else {
+            progress?.report({ increment: 100, message: `Generated ${fileKey}` });
+        } else {
             this.logMessage(`Prompt context file already exists: ${outFileUri}`);
+            progress?.report({ increment: 100, message: `Skipped existing ${fileKey}` });
         }
     }
-    
 
 
     async initializeStorageAsync(): Promise<void> {

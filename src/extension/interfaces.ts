@@ -16,7 +16,7 @@ export interface PromptConfigItem {
     info: ConfigFileInfo;
     uri: Uri;
 }
-export interface GeneratedPromptItem {
+export interface PromptContextItem {
     key: PromptContextFileKey;
     info: GeneratedFileInfo;
     uri: Uri;

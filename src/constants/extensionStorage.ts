@@ -15,7 +15,7 @@ export const EXTENSION_STORAGE = {
             NAME: 'prompt-config',
             FILES: {
                 SYSTEM_PROMPT: {
-                    fileName: 'project-system-prompt.txt',
+                    fileName: 'system-prompt.txt',
                     label: 'System Prompt',
                     description: 'The base prompt used for the project',
                     icon: 'symbol-keyword'
@@ -26,8 +26,8 @@ export const EXTENSION_STORAGE = {
                     description: 'Description of the entire project',
                     icon: 'book'
                 },
-                PROJECT_GOALS: {
-                    fileName: 'project-goals.txt',
+                SESSION_GOALS: {
+                    fileName: 'session-goals.txt',
                     label: 'Session Goals',
                     description: 'Current development session goals',
                     icon: 'target'
@@ -62,31 +62,31 @@ export const EXTENSION_STORAGE = {
             NAME: 'prompt-context',
             FILES: {
                 SYSTEM_PROMPT: {
-                    fileName: 'out-system-prompt.txt',
+                    fileName: 'system-prompt.txt',
                     label: 'System Prompt',
-                    description: 'Generated system prompt',
+                    description: 'Provides base behavioral prompt for model',
                     icon: 'symbol-keyword'
                 },
                 PROJECT_DESCRIPTION: {
-                    fileName: 'out-project-description.txt',
+                    fileName: 'project-description.txt',
                     label: 'Project Description',
-                    description: 'Generated project description',
+                    description: 'Provides a written description of project',
                     icon: 'book'
                 },
-                PROJECT_GOALS: {
-                    fileName: 'out-project-goals.txt',
+                SESSION_GOALS: {
+                    fileName: 'session-goals.txt',
                     label: 'Session Goals',
-                    description: 'Generated session goals',
+                    description: 'Provides a written description of the current session goals',
                     icon: 'target'
                 },
-                FILE_CONTEXT_STRUCTURE: {
-                    fileName: 'out-file-context-structure.txt',
+                FILE_STRUCTURE: {
+                    fileName: 'project-file-structure.txt',
                     label: 'File Structure',
                     description: 'Generated file structure context',
                     icon: 'symbol-structure'
                 },
-                FILE_CONTEXT_CONTENT: {
-                    fileName: 'out-file-context-content.txt',
+                FILE_CONTENT: {
+                    fileName: 'project-file-content.txt',
                     label: 'File Content',
                     description: 'Generated file content context',
                     icon: 'symbol-file'

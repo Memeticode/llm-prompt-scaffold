@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { FileSystemUtils } from './fileSystemUtils';
 import { EXTENSION_STORAGE } from '../../constants/extensionStorage';
 
 
@@ -46,7 +45,7 @@ export class ExtensionUtils {
     }
 
     // get the uri of a prompt out file (for workspace)
-    static getExtensionStoragePromptOutFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES): vscode.Uri {
+    static getExtensionStoragePromptContextFileUri(workspace: vscode.WorkspaceFolder, fileType: keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES): vscode.Uri {
         const storageFolderUri = this.getExtensionStorageFolderUri(workspace);
         let fileName: string;
         let dirName: string;
@@ -55,7 +54,7 @@ export class ExtensionUtils {
             fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES].fileName;
             dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
         } else {
-            throw new Error(`Unable to get extension storage prompt out file item uri. Unknown file type: ${fileType}`);
+            throw new Error(`Unable to get extension storage prompt context file item uri. Unknown file type: ${fileType}`);
         }
 
         return vscode.Uri.joinPath(storageFolderUri, dirName, fileName);
