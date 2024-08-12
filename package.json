@@ -90,9 +90,10 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "llmPromptScaffold.generatePromptItem",
+        "command": "llmPromptScaffold.generatePromptContextItem",
         "title": "LLM Prompt Scaffold: Generate Prompt Context Item",
-        "description": "Loads or reloads a specific prompt context item (applies to active workspace folder, will clear existing prompt context item)"
+        "description": "Loads or reloads a specific prompt context item (applies to active workspace folder, will clear existing prompt context item)",
+        "icon": "$(refresh)"
       },
       {
         "command": "llmPromptScaffold.openPromptContextItem",
@@ -102,12 +103,8 @@
       {
         "command": "llmPromptScaffold.copyPromptContextItemToClipboard",
         "title": "LLM Prompt Scaffold: Copy Prompt Context Item to Clipboard",
-        "description": "Copies the content of the specified prompt context item to the clipboard (for active workspace folder)"
-      },
-      {
-        "command": "llmPromptScaffold.openPromptContextItemInFileManager",
-        "title": "LLM Prompt Scaffold: Open Prompt Context Item File in File Manager",
-        "description": "Opens specified prompt context item file in the system file manager (for active workspace folder)"
+        "description": "Copies the content of the specified prompt context item to the clipboard (for active workspace folder)",
+        "icon": "$(copy)"
       },
       {
         "command": "llmPromptScaffold.openPromptContextFolderInFileManager",
@@ -159,7 +156,20 @@
           "when": "view == llmPromptScaffold.promptContextView",
           "group": "navigation@2"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "llmPromptScaffold.generatePromptContextItem",
+          "when": "view == llmPromptScaffold.promptContextView && viewItem == promptContextItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "llmPromptScaffold.copyPromptContextItemToClipboard",
+          "when": "view == llmPromptScaffold.promptContextView && viewItem == promptContextItem",
+          "group": "inline@2"
+        }
       ]
+
     }
   },
   "scripts": {

@@ -86,11 +86,11 @@ export class PromptConfigurationTreeItem extends vscode.TreeItem {
 
 export class PromptContextTreeItem extends vscode.TreeItem {
     constructor(
+        public readonly workspace: vscode.WorkspaceFolder,
         public readonly fileKey: PromptContextFileKey,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly contextValue: string,
         public readonly command?: vscode.Command,
-        public readonly buttons?: vscode.Command[],
         public readonly fileSize?: string
     ) {
         const label = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES[fileKey].label;
@@ -100,23 +100,21 @@ export class PromptContextTreeItem extends vscode.TreeItem {
         if (command) {
             this.command = command;
         }
-        if (buttons) {
-            this.buttons = buttons;
-        }
         this.iconPath = this.getThemeIcon();
         this.description = `${fileSize}`;
+        this.tooltip = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES[fileKey].description;
     }
 
     private getThemeIcon(): vscode.ThemeIcon {
         switch (this.fileKey) {
             case 'SYSTEM_PROMPT':
-                return new vscode.ThemeIcon('symbol-keyword');
+                return new vscode.ThemeIcon('comment-discussion');
             case 'PROJECT_DESCRIPTION':
-                return new vscode.ThemeIcon('book');
+                return new vscode.ThemeIcon('info');
             case 'SESSION_GOALS':
-                return new vscode.ThemeIcon('target');
+                return new vscode.ThemeIcon('milestone');
             case 'FILE_STRUCTURE':
-                return new vscode.ThemeIcon('symbol-structure');
+                return new vscode.ThemeIcon('list-tree');
             case 'FILE_CONTENT':
                 return new vscode.ThemeIcon('symbol-file');
             default:

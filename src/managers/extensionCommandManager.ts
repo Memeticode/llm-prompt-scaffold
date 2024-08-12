@@ -5,6 +5,7 @@ import { IExtensionStateManager } from './extensionStateManager';
 import { IExtensionStorageManager } from '../managers/extensionStorageManager';
 import { EXTENSION_STORAGE } from '../constants/extensionStorage';
 import { PromptConfigFileKey, PromptContextFileKey } from '../extension/types';
+import { PromptContextTreeItem } from '../providers/treeItems';
 
 export class ExtensionCommandManager extends BaseCommandQueue {
     constructor(
@@ -236,25 +237,25 @@ export class ExtensionCommandManager extends BaseCommandQueue {
         }, true, true);
     }
 
-    async openPromptContextItemInFileManagerAsync(workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey): Promise<void> {
-        return this.queueCommand("openPromptContextItemInFileManagerAsync",
-            async (cancellationToken: vscode.CancellationToken) => {
-            workspace = workspace || await this.getWorkspaceForCommand();
-            if (!workspace) { return; }
+    // async openPromptContextItemInFileManagerAsync(workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey): Promise<void> {
+    //     return this.queueCommand("openPromptContextItemInFileManagerAsync",
+    //         async (cancellationToken: vscode.CancellationToken) => {
+    //         workspace = workspace || await this.getWorkspaceForCommand();
+    //         if (!workspace) { return; }
 
-            if (!fileKey) {
-                fileKey = await this.showPromptContextItemQuickPick();
-                if (!fileKey) { return; }
-            }
+    //         if (!fileKey) {
+    //             fileKey = await this.showPromptContextItemQuickPick();
+    //             if (!fileKey) { return; }
+    //         }
 
-            if (cancellationToken.isCancellationRequested) {
-                throw new vscode.CancellationError();
-            }
+    //         if (cancellationToken.isCancellationRequested) {
+    //             throw new vscode.CancellationError();
+    //         }
 
-            const fileUri = this.storageManager.getPromptContextFileUri(workspace, fileKey);
-            await vscode.env.openExternal(vscode.Uri.file(fileUri.fsPath));
-        }, true, true);
-    }
+    //         const fileUri = this.storageManager.getPromptContextFileUri(workspace, fileKey);
+    //         await vscode.env.openExternal(vscode.Uri.file(fileUri.fsPath));
+    //     }, true, true);
+    // }
     
     async openPromptContextFolderInFileManagerAsync(workspace?: vscode.WorkspaceFolder): Promise<void> {
         return this.queueCommand("openPromptContextFolderInFileManagerAsync",

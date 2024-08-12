@@ -67,24 +67,20 @@ export class PromptContextTreeProvider extends BaseLoggable implements vscode.Tr
     }
 
     private async getPromptContextTreeItem(workspace: vscode.WorkspaceFolder, fileKey: PromptContextFileKey): Promise<PromptContextTreeItem> {
-        // this is returning config uri instead of context uri
         const fileUri = ExtensionUtils.getExtensionStoragePromptContextFileUri(workspace, fileKey);
         const fileSize = await FileSystemUtils.getFileSizeFormattedAsync(fileUri);
-        return new PromptContextTreeItem(
+        const res = new PromptContextTreeItem(
+            workspace,
             fileKey,
             vscode.TreeItemCollapsibleState.None,
-            'file',
+            'promptContextItem',
             {
                 command: 'llmPromptScaffold.openPromptContextItem',
                 title: 'Open Prompt Context Item',
                 arguments: [workspace, fileKey]
             },
-            [{
-                command: 'llmPromptScaffold.generatePromptContextItem',
-                title: 'Regenerate',
-                arguments: [workspace, fileKey]
-            }],
             fileSize
         );
+        return res;
     }
 }

@@ -8,6 +8,7 @@ import { WorkspaceSelectionTreeProvider } from './providers/workspaceSelectionTr
 import { PromptConfigurationTreeProvider } from './providers/promptConfigurationTreeProvider';
 import { PromptContextTreeProvider } from './providers/promptContextTreeProvider';
 import { PromptConfigFileKey, PromptContextFileKey } from './extension/types';
+import { PromptContextTreeItem } from './providers/treeItems';
 import { PromptConfigItem, PromptContextItem } from './extension/interfaces';
 import { ExtensionCommandManager } from './managers/extensionCommandManager';
 
@@ -22,8 +23,7 @@ let promptConfigProvider: PromptConfigurationTreeProvider;
 let promptContextProvider: PromptContextTreeProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
-    try
-    {
+    try {
         // create and store the output channel
         outputChannel = vscode.window.createOutputChannel('LLM Prompt Scaffold');
         context.subscriptions.push(outputChannel);
@@ -44,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
         registerCommands(context);
         registerProviders(context);
 
-        
+
         // these functions will change and be cleaned up as we clean up the managers
         // Event listeners should indeed be added to context.subscriptions for proper cleanup!
         eventManager.registerEventListeners();
@@ -53,16 +53,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
         outputChannel.appendLine('LLM Prompt Scaffold extension activated successfully.');
     }
-    catch(error)
-    {
+    catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        try 
-        {
+        try {
             outputChannel.appendLine(`Error during activation: ${errorMessage}`);
             vscode.window.showErrorMessage(`Failed to activate LLM Prompt Scaffold extension. Check output for details.`);
         }
-        catch(logError)
-        {
+        catch (logError) {
             console.error('Failed to log activation error to output channel:', logError);
             console.error('Original activation error:', errorMessage);
         }
@@ -76,59 +73,65 @@ function registerCommands(context: vscode.ExtensionContext) {
     // Other extension commands (all start w/ "LLM Prompt Scaffold: ")
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            'llmPromptScaffold.setActiveWorkspace', 
-            async (workspaceFolder?: vscode.WorkspaceFolder) => 
+            'llmPromptScaffold.setActiveWorkspace',
+            async (workspaceFolder?: vscode.WorkspaceFolder) =>
                 await commandManager.setActiveWorkspaceAsync(workspaceFolder)
         ),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.setDefaultPromptConfiguration', 
-            async () => 
+            'llmPromptScaffold.setDefaultPromptConfiguration',
+            async () =>
                 await commandManager.setDefaultPromptConfigurationAsync()
         ),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.setDefaultPromptConfigurationItem', 
-            async () => 
+            'llmPromptScaffold.setDefaultPromptConfigurationItem',
+            async () =>
                 await commandManager.setDefaultPromptConfigurationItemAsync()
         ),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.openPromptConfigurationItem', 
-            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptConfigFileKey) => 
+            'llmPromptScaffold.openPromptConfigurationItem',
+            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptConfigFileKey) =>
                 await commandManager.openPromptConfigurationItemAsync(workspace, fileKey)
         ),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.generatePromptContextItems', 
-            async () => 
+            'llmPromptScaffold.generatePromptContextItems',
+            async () =>
                 await commandManager.generatePromptContextItemsAsync()
         ),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.generatePromptItem', 
-            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey) => 
-                await commandManager.generatePromptContextItemAsync(workspace, fileKey)),
+            'llmPromptScaffold.generatePromptContextItem', 
+            // Call command implementation with item as may be called by inline button from promt context tree item
+            async (item: PromptContextTreeItem) => {
+                if (item.workspace && item.fileKey) {
+                    await commandManager.generatePromptContextItemAsync(item.workspace, item.fileKey);
+                } else {
+                    await commandManager.generatePromptContextItemAsync();
+                }
+        }),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.openPromptContextItem', 
-            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey) => 
+            'llmPromptScaffold.openPromptContextItem',
+            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey) =>
                 await commandManager.openPromptContextItemAsync(workspace, fileKey)
         ),
         vscode.commands.registerCommand(
             'llmPromptScaffold.copyPromptContextItemToClipboard', 
-            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey) => 
-                await commandManager.copyPromptContextItemToClipboardAsync(workspace, fileKey)
-        ),
+            // Call command implementation with item as may be called by inline button from promt context tree item
+            async (item: PromptContextTreeItem) => {
+                if (item.workspace && item.fileKey) {
+                    await commandManager.copyPromptContextItemToClipboardAsync(item.workspace, item.fileKey);
+                } else {
+                    await commandManager.copyPromptContextItemToClipboardAsync();
+                }
+        }),
         vscode.commands.registerCommand(
-            'llmPromptScaffold.openPromptContextItemInFileManager', 
-            async (workspace?: vscode.WorkspaceFolder, fileKey?: PromptContextFileKey) => 
-                await commandManager.openPromptContextItemInFileManagerAsync(workspace, fileKey)
-        ),
-        vscode.commands.registerCommand(
-            'llmPromptScaffold.openPromptContextFolderInFileManager', 
-            async (workspace?: vscode.WorkspaceFolder) => 
+            'llmPromptScaffold.openPromptContextFolderInFileManager',
+            async (workspace?: vscode.WorkspaceFolder) =>
                 await commandManager.openPromptContextFolderInFileManagerAsync(workspace)
         )
     );
 }
 
 function registerProviders(context: vscode.ExtensionContext) {
-    context.subscriptions.push(        
+    context.subscriptions.push(
         vscode.window.createTreeView('llmPromptScaffold.workspaceSelectorView', { treeDataProvider: workspaceSelectionProvider }),
         vscode.window.createTreeView('llmPromptScaffold.promptConfigurationView', { treeDataProvider: promptConfigProvider }),
         vscode.window.createTreeView('llmPromptScaffold.promptContextView', { treeDataProvider: promptContextProvider })

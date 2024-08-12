@@ -52,12 +52,12 @@ export class ExtensionUtils {
 
         if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES) {
             fileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES[fileType as keyof typeof EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.FILES].fileName;
-            dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.NAME;
+            dirName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONTEXT_DIR.NAME;        
+            return vscode.Uri.joinPath(storageFolderUri, dirName, fileName);
         } else {
             throw new Error(`Unable to get extension storage prompt context file item uri. Unknown file type: ${fileType}`);
         }
 
-        return vscode.Uri.joinPath(storageFolderUri, dirName, fileName);
     }
 
 }
