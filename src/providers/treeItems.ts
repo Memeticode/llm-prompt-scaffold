@@ -117,6 +117,8 @@ export class PromptContextTreeItem extends vscode.TreeItem {
                 return new vscode.ThemeIcon('list-tree');
             case 'FILE_CONTENT':
                 return new vscode.ThemeIcon('symbol-file');
+            case 'AGGREGATE_PROMPT':
+                return new vscode.ThemeIcon('unfold');
             default:
                 return new vscode.ThemeIcon('file');
         }

@@ -166,19 +166,21 @@ export class ExtensionStorageManager extends BaseLoggable implements IExtensionS
             if (cancellationToken?.isCancellationRequested) {
                 throw new vscode.CancellationError();
             }
-
+            let uri : vscode.Uri;
             switch (fileKey) {
                 case 'SYSTEM_PROMPT':
                 case 'PROJECT_DESCRIPTION':
                 case 'SESSION_GOALS':
-                    const configSrcUri = ExtensionUtils.getExtensionStoragePromptConfigFileUri(workspace, fileKey);
-                    await PromptContextFileGenerator.writeFromConfigFileAsync(outFileUri, configSrcUri);
+                    uri = await PromptContextFileGenerator.generateContextItemFromConfigItem(workspace, fileKey);
                     break;
                 case 'FILE_STRUCTURE':
-                    await PromptContextFileGenerator.writeFileStructureAsync(outFileUri, workspace);
+                    uri = await PromptContextFileGenerator.generateFileStructureContextAsync(workspace);
                     break;
                 case 'FILE_CONTENT':
-                    await PromptContextFileGenerator.writeFileContentAsync(outFileUri, workspace);
+                    uri = await PromptContextFileGenerator.generateFileContentContextAsync(workspace);
+                    break;
+                case 'AGGREGATE_PROMPT':
+                    uri = await PromptContextFileGenerator.generateAggregatePromptAsync(workspace);
                     break;
                 default:
                     throw new Error(`Unknown file key: ${fileKey}`);
@@ -268,32 +270,29 @@ export class ExtensionStorageManager extends BaseLoggable implements IExtensionS
         fileType: PromptConfigFileKey,
         fileUri: vscode.Uri
     ): Promise<void> {
-        try 
-        {
+        try {
             let defaultFileName: string;        
             if (fileType in EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES) {
                 defaultFileName = EXTENSION_STORAGE.STRUCTURE.PROMPT_CONFIG_DIR.FILES[fileType as PromptConfigFileKey].fileName;
             } else {
                 throw new Error(`Unable to get extension storage file default content. Unknown file type: ${fileType}`);
             }
+
             const extensionPath = vscode.extensions.getExtension(EXTENSION_STORAGE.EXTENSION_ID)?.extensionPath;
             if (!extensionPath) {
                 throw new Error(`Extension path not found! (Extension Id: ${EXTENSION_STORAGE.EXTENSION_ID}`);
             }
-    
+
             const defaultContentUri = vscode.Uri.joinPath(vscode.Uri.file(extensionPath), 'dist', 'defaultFileContent', defaultFileName);
+            
             if (await FileSystemUtils.fileExistsAsync(defaultContentUri)) {
-                await FileSystemUtils.copyFileAsync(defaultContentUri, fileUri, {overwrite:true});
+                await FileSystemUtils.streamFileContentAsync(fileUri, defaultContentUri);
+            } else {
+                throw new Error(`Default content file not found for file type: ${fileType}. Expected default content at URI: ${defaultContentUri}`);
             }
-            else
-            {
-                throw new Error(`Default content file not not found for file type: ${fileType}. Expected default content at URI: ${defaultContentUri}`);
-            }
-        }
-        catch (error)
-        {
+        } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            throw new Error(`Error occured when generating default file for prompt configuration item type '${fileType}'. Error: ${errorMessage}`);
+            throw new Error(`Error occurred when generating default file for prompt configuration item type '${fileType}'. Error: ${errorMessage}`);
         }
     }
 

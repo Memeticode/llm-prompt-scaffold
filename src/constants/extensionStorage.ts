@@ -90,6 +90,12 @@ export const EXTENSION_STORAGE = {
                     label: 'File Content',
                     description: 'Generated file content context',
                     icon: 'symbol-file'
+                },
+                AGGREGATE_PROMPT: {
+                    fileName: 'aggregate-prompt.txt',
+                    label: 'Mega Prompt',
+                    description: 'Complete prompt to be dumped into an LLM as a conversation starter',
+                    icon: 'unfold'
                 }
             }
         }

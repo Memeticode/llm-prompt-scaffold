@@ -1,7 +1,22 @@
 import * as vscode from 'vscode';
-import { IFileFlagger } from './fileFlaggers';
+import * as fs from 'fs';
+import { Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 
 export class FileSystemUtils {
+
+    private static normalizeLineEndings(content: string): string {
+        return content.replace(/\r\n|\r|\n/g, '\n');
+    }
+    private static createNormalizingStream(): Transform {
+        return new Transform({
+            transform(chunk: Buffer, _: BufferEncoding, callback: Function) {
+                const normalizedChunk = chunk.toString().replace(/\r\n|\r|\n/g, '\n');
+                this.push(Buffer.from(normalizedChunk));
+                callback();
+            }
+        });
+    }
 
     // FILE INFO 
     static async getFileTypeAsync(uri: vscode.Uri): Promise<vscode.FileType> {
@@ -13,6 +28,18 @@ export class FileSystemUtils {
         try {
             await vscode.workspace.fs.stat(uri);
             return true;
+        } catch (error) {
+            if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+                return false;
+            }
+            throw error;
+        }
+    }
+
+    static async fileIsNotEmptyAsync(uri: vscode.Uri): Promise<boolean> {
+        try {
+            const stat = await vscode.workspace.fs.stat(uri);
+            return stat.size > 0;
         } catch (error) {
             if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
                 return false;
@@ -95,7 +122,7 @@ export class FileSystemUtils {
     }
 
     static async writeFileAsync(uri: vscode.Uri, content: string): Promise<void> {
-        await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+        await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));    
     }
 
     static async appendToFileAsync(uri: vscode.Uri, content: string): Promise<void> {
@@ -112,6 +139,121 @@ export class FileSystemUtils {
         await vscode.workspace.fs.rename(source, target, options);
     }
 
+    // STREAMS
+
+    static async streamFileContentAsync(
+        targetUri: vscode.Uri,
+        sourceUri: vscode.Uri,
+        options: {
+            transform?: (line: string) => string | null,
+            trimEmptyLines?: boolean
+        } = {}
+    ): Promise<void> {
+        const { transform, trimEmptyLines = false } = options;
+
+        const readStream = fs.createReadStream(sourceUri.fsPath, { encoding: 'utf8' });
+        const writeStream = fs.createWriteStream(targetUri.fsPath, { encoding: 'utf8' });
+
+        const transformStream = new Transform({
+            objectMode: true,
+            transform(chunk: string, encoding: string, callback: Function) {
+                const lines = chunk.split(/\r?\n/);
+                for (let line of lines) {
+                    if (transform) {
+                        const transformedLine = transform(line);
+                        if (transformedLine === null) { continue; }
+                        line = transformedLine;
+                    }
+                    if (trimEmptyLines && line.trim() === '') { continue; }
+                    this.push(line + '\n');
+                }
+                callback();
+            }
+        });
+
+        await pipeline(readStream, transformStream, writeStream);
+    }
+
+
+    static createReadStream(uri: vscode.Uri): fs.ReadStream {
+        return fs.createReadStream(uri.fsPath);
+    }
+
+    static createWriteStream(uri: vscode.Uri): fs.WriteStream {
+        return fs.createWriteStream(uri.fsPath, { encoding: 'utf-8'});
+    }
+
+    static async appendFileContentAsync(
+        targetUri: vscode.Uri,
+        sourceUri: vscode.Uri,
+        options: {
+            header?: string,
+            trailer?: string,
+            append?: boolean
+        } = {}
+    ): Promise<void> {
+        const { header, trailer, append = true } = options;
+        const outputStream = fs.createWriteStream(targetUri.fsPath, { flags: append ? 'a' : 'w' });
+
+        if (header) {
+            outputStream.write(`${append ? '\n' : ''}${header}\n`);
+        }
+
+        const inputStream = fs.createReadStream(sourceUri.fsPath);
+        const transformStream = new Transform({
+            transform(chunk, _, callback) {
+                callback(null, chunk);
+            }
+        });
+
+        await pipeline(inputStream, transformStream, outputStream, { end: false });
+
+        if (trailer) {
+            outputStream.write(`\n${trailer}\n`);
+        }
+
+        outputStream.end();
+    }
+
+    static async isFileNotEmptyAsync(uri: vscode.Uri): Promise<boolean> {
+        try {
+            const stat = await vscode.workspace.fs.stat(uri);
+            return stat.size > 0;
+        } catch (error) {
+            if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+                return false;
+            }
+            throw error;
+        }
+    }
+
+    static async writeStreamAsync(uri: vscode.Uri, content: string): Promise<void> {
+        const writeStream = fs.createWriteStream(uri.fsPath);
+        return new Promise((resolve, reject) => {
+            writeStream.write(content, (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    writeStream.end(resolve);
+                }
+            });
+        });
+    }
+
+    static async appendStreamAsync(uri: vscode.Uri, content: string): Promise<void> {
+        const writeStream = fs.createWriteStream(uri.fsPath, { flags: 'a' });
+        return new Promise((resolve, reject) => {
+            writeStream.write(content, (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    writeStream.end(resolve);
+                }
+            });
+        });
+    }
+
+    // DIRECTORY OPS
     static async directoryExistsAsync(uri: vscode.Uri): Promise<boolean> {
         try {
             const stat = await vscode.workspace.fs.stat(uri);
@@ -122,34 +264,6 @@ export class FileSystemUtils {
             }
             throw error;
         }
-    }
-
-    static async getDirectoryContentsAsync(uri: vscode.Uri, filters?: IFileFlagger | IFileFlagger[]): Promise<[string, vscode.FileType][]> {
-        const entries = await vscode.workspace.fs.readDirectory(uri);
-        if (!filters) {
-            return entries;
-        }
-
-        const filterArray = Array.isArray(filters) ? filters : [filters];
-        const filteredEntries = [];
-
-        for (const entry of entries) {
-            const entryUri = vscode.Uri.joinPath(uri, entry[0]);
-            if (await this.shouldIncludeFile(entryUri, filterArray)) {
-                filteredEntries.push(entry);
-            }
-        }
-
-        return filteredEntries;
-    }
-
-    private static async shouldIncludeFile(uri: vscode.Uri, filters: IFileFlagger[]): Promise<boolean> {
-        for (const filter of filters) {
-            if (!(await filter.isFlaggedAsync(uri))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     static async deleteDirectoryAsync(uri: vscode.Uri, options?: { recursive: boolean; useTrash: boolean }): Promise<void> {

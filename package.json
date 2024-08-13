@@ -2,7 +2,7 @@
   "name": "llm-prompt-scaffold",
   "displayName": "LLM Prompt Scaffold",
   "description": "Generates project structure and aggregate code file from selected file context.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "memeticode",
   "repository": {
     "type": "git",
