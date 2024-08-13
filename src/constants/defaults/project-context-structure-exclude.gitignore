@@ -3,6 +3,7 @@
 # Structure exclusions may be overridden by structure inclusions
 # Structure include/exclude rules are applied before content include/exclude rules
 
+.vscode
 .git
 .gitignore
 .vscode

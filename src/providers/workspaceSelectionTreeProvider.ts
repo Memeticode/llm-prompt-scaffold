@@ -16,6 +16,10 @@ export class WorkspaceSelectionTreeProvider extends BaseLoggable implements vsco
         this.addDisposable(
             this.stateManager.onActiveWorkspaceChanged(() => this.refresh())
         );
+        this.addDisposable(
+            vscode.workspace.onDidChangeWorkspaceFolders(() => this.refresh())
+        );
+
     }
 
     refresh(): void {

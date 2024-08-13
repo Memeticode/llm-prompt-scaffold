@@ -156,7 +156,7 @@ export class FileSystemUtils {
 
         const transformStream = new Transform({
             objectMode: true,
-            transform(chunk: string, encoding: string, callback: Function) {
+            transform(chunk: string, _: string, callback: Function) {
                 const lines = chunk.split(/\r?\n/);
                 for (let line of lines) {
                     if (transform) {
