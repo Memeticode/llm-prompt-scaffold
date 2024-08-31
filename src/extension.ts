@@ -11,6 +11,7 @@ import { PromptConfigFileKey, PromptContextFileKey } from './extension/types';
 import { PromptContextTreeItem } from './providers/treeItems';
 import { PromptConfigItem, PromptContextItem } from './extension/interfaces';
 import { ExtensionCommandManager } from './managers/extensionCommandManager';
+import { PromptConfigWebview } from './webview/promptConfigWebview';
 
 let outputChannel: vscode.OutputChannel;
 let stateManager: ExtensionStateManager;
@@ -21,6 +22,7 @@ let commandManager: ExtensionCommandManager;
 let workspaceSelectionProvider: WorkspaceSelectionTreeProvider;
 let promptConfigProvider: PromptConfigurationTreeProvider;
 let promptContextProvider: PromptContextTreeProvider;
+
 
 export async function activate(context: vscode.ExtensionContext) {
     try {
@@ -69,7 +71,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 function registerCommands(context: vscode.ExtensionContext) {
 
-
     // Other extension commands (all start w/ "LLM Prompt Scaffold: ")
     context.subscriptions.push(
         vscode.commands.registerCommand(
@@ -77,6 +78,16 @@ function registerCommands(context: vscode.ExtensionContext) {
             async (workspaceFolder?: vscode.WorkspaceFolder) =>
                 await commandManager.setActiveWorkspaceAsync(workspaceFolder)
         ),
+        vscode.commands.registerCommand('llmPromptScaffold.openPromptConfigWebview', async () => {
+            const webview = PromptConfigWebview.getInstance(
+                "PromptConfigWebview",
+                outputChannel,
+                context.extensionUri,
+                storageManager,
+                stateManager
+            );
+            await webview.show();
+        }),
         vscode.commands.registerCommand(
             'llmPromptScaffold.setDefaultPromptConfiguration',
             async () =>
@@ -141,12 +152,13 @@ function registerProviders(context: vscode.ExtensionContext) {
 export function deactivate() {
     outputChannel.appendLine('LLM Prompt Scaffold extension is deactivating.');
     try {
+        if (PromptConfigWebview.instance) { PromptConfigWebview.instance.dispose(); }
         if (stateManager) { stateManager.dispose(); }
         if (storageManager) { storageManager.dispose(); }
         if (eventManager) { eventManager.dispose(); }
         if (workspaceSelectionProvider) { workspaceSelectionProvider.dispose(); }
-        if (promptConfigProvider) { promptConfigProvider.dispose(); }
         if (promptContextProvider) { promptContextProvider.dispose(); }
+        if (promptConfigProvider) { promptConfigProvider.dispose(); }
         outputChannel.appendLine('LLM Prompt Scaffold extension deactivated successfully.');
     } catch (error) {
         outputChannel.appendLine(`Error during deactivation: ${error}`);

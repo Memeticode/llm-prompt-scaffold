@@ -69,6 +69,10 @@
         "description": "Sets the active workspace folder LLM Prompt Scaffold will operate in"
       },
       {
+        "command": "llmPromptScaffold.openPromptConfigWebview",
+        "title": "LLM Prompt Scaffold: Open Prompt Configuration Window"
+      },
+      {
         "command": "llmPromptScaffold.setDefaultPromptConfiguration",
         "title": "LLM Prompt Scaffold: Set Default Prompt Configuration",
         "description": "Sets all prompt configuration items to their default values (applies to active workspace folder, will clear existing configuration)"

@@ -24,6 +24,9 @@ export interface IExtensionStorageManager
     generatePromptConfigFilesAsync(workspace: vscode.WorkspaceFolder, overwrite: boolean): Promise<void>
     generatePromptConfigFileAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptConfigFileKey, overwrite: boolean): Promise<vscode.Uri>
 
+    readPromptConfigFileContentAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptConfigFileKey): Promise<string>
+    writePromptConfigFileContentAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptConfigFileKey, content: string): Promise<void>
+
     // generate prompt out files
     generatePromptContextFilesAsync(
         workspace: vscode.WorkspaceFolder, 
@@ -124,6 +127,17 @@ export class ExtensionStorageManager extends BaseLoggable implements IExtensionS
         }
         return fileUri;
     }
+    
+    async readPromptConfigFileContentAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptConfigFileKey): Promise<string> {
+        const fileUri = this.getPromptConfigFileUri(workspace, fileKey);
+        return await FileSystemUtils.readFileAsync(fileUri);
+    }
+
+    async writePromptConfigFileContentAsync(workspace: vscode.WorkspaceFolder, fileKey: PromptConfigFileKey, content: string): Promise<void> {
+        const fileUri = this.getPromptConfigFileUri(workspace, fileKey);
+        await FileSystemUtils.writeFileAsync(fileUri, content);
+    }
+
     
     async generatePromptContextFilesAsync(
         workspace: vscode.WorkspaceFolder, 
